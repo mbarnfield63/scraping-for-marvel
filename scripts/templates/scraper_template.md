@@ -12,8 +12,13 @@ Molecule      : [MOLECULE — e.g. CS₂ — linear triatomic, Herzberg notation
 Batch         : [BATCH_N] of [BATCH_TOTAL]
 Isotopologues : [ISO_LIST — standard notation, e.g. 12C32S2, 13C32S2]
 Tables        : [TABLE_RANGE — e.g. Tables 2–5 as they appear in the PDF]
-Uncertainty   : [UNCERTAINTY — e.g. 0.0001 cm⁻¹ for unblended lines (Section 2);
-                 0.001 cm⁻¹ for blended lines]
+Uncertainty   : [UNCERTAINTY — the paper's EXPLICITLY STATED value only. Either
+                 (a) a global measurement uncertainty/resolution quoted in the
+                 text (e.g. "resolution of 0.030 cm⁻¹"), applied to every line, OR
+                 (b) a per-transition uncertainty COLUMN in the tables, applied
+                 row by row. Never infer, average, split blended-vs-clean, or
+                 derive from obs-calc/residuals. If the paper states neither,
+                 do NOT guess — flag REQUIRES MANUAL REVIEW.]
 Expected count: [EXPECTED — transitions expected in this batch, per isotopologue if known]
 
 ━━ QUANTUM NUMBER COLUMNS ━━
@@ -108,3 +113,58 @@ STEP 4 — After the CSV, report:
 9. When in doubt, omit. A missing value is recoverable by re-reading the paper.
    A silently wrong value corrupts the MARVEL spectroscopic network and is
    undetectable downstream.
+
+10. UNCERTAINTY IS NEVER INFERRED. Use only the paper's explicitly stated value:
+    a global measurement uncertainty/resolution (applied to every transition) or
+    a per-transition uncertainty column (applied row by row). Do NOT derive it
+    from obs-calc residuals, do NOT split blended vs. clean with made-up numbers,
+    do NOT "estimate" it. Record a blended flag in `notes` if useful, but it must
+    not change the uncertainty. If the paper states no uncertainty at all, flag
+    REQUIRES MANUAL REVIEW rather than guessing. (obs-calc may still be used to
+    VALIDATE/repair a misread wavenumber digit per technique A below — that is a
+    value check, not an uncertainty source.)
+
+━━ RECURRING OCR / TABLE HAZARDS & TECHNIQUES (general — apply to every paper) ━━
+These patterns recur across papers (first catalogued on 74MaSa, Maki & Sams 1974).
+Encode them into every extraction, not just the paper where they were found.
+
+A. THE obs-calc COLUMN IS YOUR DIGIT-CHECKER (most important technique).
+   Line-list tables almost always print an obs-calc residual next to each
+   wavenumber (headed "σ-C", "M-C", "θ-C", "o-c" — all the same thing). This
+   residual is small (|x| ≲ 0.01). Since obs = calc + residual, and calc lies on
+   the *smooth* branch, the residual PINS the true value. Use it two ways:
+     - Alignment sanity: a residual-position cell must hold a residual-magnitude
+       number (or be blank). If it holds a wavenumber-magnitude number, the row
+       is mis-parsed — flag it, do not extract.
+     - Single-digit repair: OCR on faint scans routinely misreads ONE digit of a
+       wavenumber (e.g. 2194.91→2188.91, 2176.37→2179.37, 2142.5694→2142.9694).
+       Detect via a branch-monotonicity break; confirm the misread digit is the
+       one that makes obs = (smooth-branch calc) + (printed residual). If the
+       printed residual is small AND the corrected value falls on the branch, the
+       fix is determined (not a guess) — apply it and record the raw value, the
+       corrected value, and the residual in notes. If the residual is instead
+       INCONSISTENT with every plausible branch value, mark UNREADABLE.
+
+B. COLLAPSED CELLS + REPEATED J-LABEL in MinerU multi-band HTML tables.
+   Multi-band tables put a J column on BOTH ends and one (wavenumber, residual)
+   pair per band per branch. MinerU drops *trailing* empty <td>s and often
+   appends the row's J as the last cell (sometimes itself OCR-misread, e.g.
+   59→55), so row length varies. Parse defensively: first cell = J; drop a
+   trailing bare-integer cell if it equals J or the row is over-length (a real
+   wavenumber always has a decimal point); right-pad the value region to the
+   fixed column count; THEN map columns. Validate every residual slot per (A).
+
+C. BRANCH HEADERS LIE — ASSIGN BY PHYSICS. A printed "P(J)"/"R(J)" header can be
+   wrong (74MaSa labelled a 22°1-12°0 R-branch column "P(J)"). Decide branch by
+   monotonic direction: R increases with J, P decreases. Only fall back to the
+   header when a column is too sparse to tell.
+
+D. MULTI-PAGE TABLES: a table continued across pages ("TABLE X (continued)") is
+   merged by MinerU into ONE <table> in full.md but the continuation page yields
+   a caption block with NO table_body in content_list.json. Trust full.md for row
+   completeness; never derive row counts from content_list.json alone.
+
+E. VISUAL VALIDATION when the MinerU origin.pdf render is password-protected
+   (the Read tool will refuse it): the SOURCE PDF in papers/ usually opens fine.
+   Render the specific table pages to PNG with PyMuPDF (`fitz`) or pikepdf and
+   read those, or crop a tight region at high DPI (~400-500) for a single cell.

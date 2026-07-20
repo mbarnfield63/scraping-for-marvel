@@ -160,6 +160,8 @@ One Claude pass per paper does reasoning **and** extraction (there is no separat
 
 **Anti-fabrication rule**: a wrong value silently corrupts the spectroscopic network — there is no downstream physical check. Never invent, interpolate, or "smooth" a value. An UNREADABLE flag is always correct over a guess. See `scripts/templates/scraper_template.md` for the full extraction-brief skeleton.
 
+**Uncertainty rule**: the uncertainty column comes **only** from what the paper explicitly states — either a **global measurement uncertainty/resolution** quoted in the text (applied to every transition) or a **per-transition uncertainty column** in the tables (applied row by row). Never infer it, never split blended vs. clean with made-up values, never derive it from obs-calc/residuals. If the paper states no uncertainty at all, flag `REQUIRES MANUAL REVIEW` — do not guess.
+
 ---
 
 ### Step 4: Merge

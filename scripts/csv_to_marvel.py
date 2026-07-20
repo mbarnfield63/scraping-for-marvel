@@ -3,9 +3,9 @@ csv_to_marvel.py — Merge scraper batch CSVs and convert to MARVEL tab-separate
 
 Commands:
     merge  <mol> <paper_id>   Merge molecules/<mol>/csv/<paper_id>_batch*.csv
-                               → molecules/<mol>/csv/<paper_id>_merged.csv
+                               -> molecules/<mol>/csv/<paper_id>_merged.csv
     format <mol> <paper_id>   Split merged CSV by isotopologue
-                               → molecules/<mol>/output/<mol>_<iso>_<paper_id>_YYYYMMDD_HHMMSS.txt
+                               -> molecules/<mol>/output/<mol>_<iso>_<paper_id>_YYYYMMDD_HHMMSS.txt
 """
 import argparse
 import csv
@@ -38,7 +38,7 @@ def merge(mol: str, paper_id: str) -> None:
         w = csv.writer(f)
         w.writerow(header)
         w.writerows(rows)
-    print(f"Merged {len(batches)} batch(es) → {out.name}  ({len(rows)} rows)")
+    print(f"Merged {len(batches)} batch(es) -> {out.name}  ({len(rows)} rows)")
 
 
 def format_marvel(mol: str, paper_id: str) -> None:
