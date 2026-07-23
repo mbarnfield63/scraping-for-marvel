@@ -16,7 +16,8 @@ your papers and data live only on your machine.
 |-------------|-----------------------------------------------------------------------|
 | `papers/`   | The source PDFs you download. Drop them in here first.                 |
 | `markdown/` | OCR output — filled in automatically by `scripts/mineru_cloud.py`.    |
-| `csv/`      | Extracted numbers and the reviewer's report.                          |
+| `csv/`      | Extracted numbers (batch + merged CSVs).                              |
+| `reviews/`  | The reviewer agent's report(s).                                       |
 | `output/`   | The finished MARVEL `.txt` files — your results.                      |
 
 The full step-by-step is in the main [README](../../README.md).

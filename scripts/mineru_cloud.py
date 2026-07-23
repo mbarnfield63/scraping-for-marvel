@@ -79,7 +79,7 @@ def put_file(url, path):
     # (the URL is signed without one). urllib forces a Content-Type on any body,
     # which breaks the signature -> 403, so PUT via http.client for exact headers.
     u = urllib.parse.urlsplit(url)
-    conn = http.client.HTTPSConnection(u.netloc, timeout=300)
+    conn = http.client.HTTPSConnection(u.netloc, timeout=900)
     try:
         path_qs = u.path + ("?" + u.query if u.query else "")
         body = path.read_bytes()

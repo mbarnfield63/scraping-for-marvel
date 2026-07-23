@@ -84,7 +84,7 @@ Combines the CSV pieces into one file.
 ### 5. Review (safety gate)
 Claude runs a reviewer that checks the merged data (valid quantum numbers,
 sensible wavenumbers, no duplicates, missing rows, etc.) and writes a report
-to `csv/74MaSa_review.md`. If the report says **REQUIRES MANUAL REVIEW**,
+to `reviews/74MaSa_review.md`. If the report says **REQUIRES MANUAL REVIEW**,
 stop and look at the flagged rows before continuing.
 
 ### 6. Write the MARVEL file
@@ -102,7 +102,8 @@ one per isotopologue. **These are your results.**
 molecules/<molecule>/
 ├── papers/     the source PDFs you put in
 ├── markdown/   OCR output (one folder per paper)
-├── csv/        extracted numbers + review reports
+├── csv/        extracted numbers (batch + merged CSVs)
+├── reviews/    reviewer reports
 └── output/     the finished MARVEL .txt files  ← the goal
 ```
 

@@ -13,9 +13,12 @@ When the user says **"get up to speed"**, immediately read the Obsidian state fi
 `C:/Obsidian/Claude_State/MARVEL scraping.md` to reconstruct full context.
 
 ### 2. Log & Save
-When reaching a milestone or when the user says **"save state"**, overwrite the Obsidian state file (`C:/Obsidian/Claude_state/MARVEL scraping.md`) with a clean update (see Rule 3 format) and append a summary of work done to the log file (`C:/Obsidian/Logs/MARVEL scraping Log.md`). Never change any other files within `C:/Obsidian/`.
+When reaching a milestone or when the user says **"save state"**, overwrite the Obsidian state file (`C:/Obsidian/Claude_state/MARVEL scraping.md`) with a clean update (see Rule 4 format) and append a summary of work done to the log file (`C:/Obsidian/Logs/MARVEL scraping Log.md`). Never change any other files within `C:/Obsidian/`.
 
-### 3. Obsidian State File Format
+### 3. Never delete untracked files outside your own run
+Never delete, move-as-cleanup, or overwrite an untracked file in this repo unless it was created by the current agent/session's own run (e.g. a temp file you just wrote to your own scratchpad). Untracked files (`git status`) are frequently in-progress user work, not junk — `git` gives no recovery path for them if deleted. This applies even to "obviously superfluous"-looking files (stray `.txt`/`.json` scratch files at the repo root, etc.) and even when doing routine cleanup. If a file looks like leftover clutter and you did not create it in this run, leave it alone or ask the user before touching it.
+
+### 4. Obsidian State File Format
 When writing to `C:/Obsidian/Claude_State/MARVEL scraping.md`, always overwrite with:
 
 ```
@@ -41,7 +44,8 @@ C:\Code\MARVEL\
 │   └── <molecule>\               # One folder per molecule (e.g. CS2, CO, H2O)
 │       ├── papers\               # Source PDFs and supplementary files
 │       ├── markdown\             # MinerU cloud output, one folder per paper (see Step 2)
-│       ├── csv\                  # Batch CSVs, merged CSV, reviewer reports
+│       ├── csv\                  # Batch CSVs, merged CSV
+│       ├── reviews\              # Reviewer agent reports (<paperID>_review.md)
 │       └── output\               # Final MARVEL .txt files
 ├── scripts\
 │   ├── mineru_cloud.py           # Batch OCR via MinerU cloud API → markdown + bbox JSON
@@ -114,7 +118,7 @@ mineru_cloud.py (cloud OCR) → Claude validate+extract → csv_to_marvel.py mer
 1. **OCR** (cloud): `python scripts/mineru_cloud.py molecules/<mol>/papers --out-dir molecules/<mol>/markdown`
 2. **Validate + extract** (Claude, interactive): read each paper's `full.md` + `content_list.json`, verify suspect cells against bbox crops of the page, write batch CSVs to `csv/`
 3. **Merge**: `python scripts/csv_to_marvel.py merge <mol> <paperID>`
-4. **Reviewer agent** → `molecules/<mol>/csv/<paperID>_review.md` — **HARD GATE**
+4. **Reviewer agent** → `molecules/<mol>/reviews/<paperID>_review.md` — **HARD GATE**
 5. **Format**: `python scripts/csv_to_marvel.py format <mol> <paperID>`
 
 ---
@@ -122,7 +126,7 @@ mineru_cloud.py (cloud OCR) → Claude validate+extract → csv_to_marvel.py mer
 ### Step 1: Set Up Molecule Directory
 
 ```bash
-mkdir -p molecules/<mol>/papers molecules/<mol>/markdown molecules/<mol>/csv molecules/<mol>/output
+mkdir -p molecules/<mol>/papers molecules/<mol>/markdown molecules/<mol>/csv molecules/<mol>/reviews molecules/<mol>/output
 ```
 
 Place source PDFs (and supplementary files, if any) in `papers/`. If a paper's transitions live only in an online supplement, add the supplement to `papers/` — the OCR stage handles the main PDF, but supplementary data files are often clean text/CSV that can be parsed directly without OCR.
@@ -178,6 +182,8 @@ Merges all `<paperID>_batch*.csv` files into `<paperID>_merged.csv` in the same 
 
 Spawn one reviewer agent with the path to `<paperID>_merged.csv`. **The reviewer must not modify any data.**
 
+If two independent reviewer/extraction passes disagree on a single value (a digit, a symmetry label, etc.), resolve it by directly rendering the source PDF page yourself and reading it visually — ideally side-by-side against an unambiguous reference character on the same page — rather than trusting either pass's confidence language or an "objective" automated method (pixel/hole-counting has been shown to mis-read glyphs). Critically, **`full.md`'s OCR text is not independent ground truth** — it can misread the same glyph a disputed cell is arguing about, so cross-checking a disputed value against `full.md` only tells you what MinerU's text layer guessed, not what the page actually shows. Always settle real disagreements against the rendered page image itself.
+
 **Validation checks:**
 1. **ID format** — every entry matches `YYAuthAuth.N`; N resets to 1 per isotopologue
 2. **Uncertainty** — all values positive, non-blank (N/A only if `notes` explains why)
@@ -188,7 +194,7 @@ Spawn one reviewer agent with the path to `<paperID>_merged.csv`. **The reviewer
 7. **UNREADABLE rows** — list all, grouped by table
 8. **Cross-batch duplicates** — same wavenumber (±0.002 cm⁻¹) + same quantum numbers but different ID
 
-**Report** (written to `molecules/<mol>/csv/<paperID>_review.md`):
+**Report** (written to `molecules/<mol>/reviews/<paperID>_review.md`):
 - Section 1: check-by-check PASS / FAIL / PARTIAL with specifics
 - Section 2: all flagged rows with location and reason
 - Section 3: UNREADABLE row inventory
