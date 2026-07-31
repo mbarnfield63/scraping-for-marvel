@@ -40,7 +40,7 @@ That's it. No servers, no models to download.
 
 ## Start from the example
 
-Every molecule uses the same four-folder layout. There's a ready-made template
+Every molecule uses the same five-folder layout. There's a ready-made template
 at **`molecules/example_molecule/`** — open its
 [README](molecules/example_molecule/README.md) to see what each folder is for.
 
@@ -81,13 +81,37 @@ python scripts/csv_to_marvel.py merge CS2 74MaSa
 ```
 Combines the CSV pieces into one file.
 
-### 5. Review (safety gate)
-Claude runs a reviewer that checks the merged data (valid quantum numbers,
-sensible wavenumbers, no duplicates, missing rows, etc.) and writes a report
-to `reviews/74MaSa_review.md`. If the report says **REQUIRES MANUAL REVIEW**,
-stop and look at the flagged rows before continuing.
+### 5. Split unresolved parity pairs (electronic-transition papers only)
+```bash
+python scripts/csv_to_marvel.py split-parity CS2 74MaSa
+```
+Expands any row where the paper didn't resolve which e/f component was
+measured into a proper e/f pair. No-op for papers without electronic
+transitions.
 
-### 6. Write the MARVEL file
+### 6. Mechanical validation
+```bash
+python scripts/csv_to_marvel.py validate CS2 74MaSa
+```
+Runs the pure-logic checks (ID format, uncertainty, wavenumber range, quantum
+numbers, duplicates, UNREADABLE inventory) and prints a report — fixes
+nothing.
+
+### 7. Review (safety gate)
+Claude runs a reviewer that judges what the script can't (quantum-number
+domain validity, visual spot-checks against the source PDF) and writes a
+report to `reviews/74MaSa_review.md`. If the report says
+**REQUIRES MANUAL REVIEW**, stop and look at the flagged rows before
+continuing.
+
+### 8. Reconcile units
+```bash
+python scripts/csv_to_marvel.py reconcile CS2 74MaSa
+```
+Converts any row whose uncertainty was stated in a different unit than its
+wavenumber into the wavenumber's unit, logging the conversion.
+
+### 9. Write the MARVEL file
 ```bash
 python scripts/csv_to_marvel.py format CS2 74MaSa
 ```
@@ -115,5 +139,6 @@ molecules/<molecule>/
   plenty for normal use. These are published papers, so uploading them is fine.
 - **Never trust a guessed number.** The whole point is accuracy. An
   `UNREADABLE` flag is always better than a wrong digit.
-- **More detail** for each step lives in `CLAUDE.md`, which also tells Claude
-  Code how to run the pipeline.
+- **More detail** for each step lives in the `marvel-pipeline` skill
+  (`.claude/skills/marvel-pipeline/SKILL.md`), which also tells Claude Code
+  how to run the pipeline.
