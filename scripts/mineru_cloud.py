@@ -128,7 +128,22 @@ def download_and_extract(name, zip_url, out_dir):
         uuid = cl.name[: -len("_content_list.json")]
         for f in dest.glob(f"{uuid}_*"):
             f.rename(f.with_name(name + f.name[len(uuid):]))
+        cl = dest / f"{name}_content_list.json"
+        write_slim_content_list(cl)
     print(f"  [saved] {dest}  ({len(z.namelist())} files)")
+
+
+def write_slim_content_list(content_list_path):
+    # table_body duplicates full.md (the source of truth for table bodies) and
+    # is routinely >95% of this file's bytes; strip it so downstream steps can
+    # read structure (bbox/page_idx/captions) without re-paying for the tables.
+    blocks = json.loads(content_list_path.read_text(encoding="utf-8"))
+    for b in blocks:
+        if b.get("type") == "table" and "table_body" in b:
+            b["has_table_body"] = bool(b["table_body"].strip())
+            del b["table_body"]
+    slim_path = content_list_path.with_name(content_list_path.stem + ".slim.json")
+    slim_path.write_text(json.dumps(blocks), encoding="utf-8")
 
 
 def collect_pdfs(target):

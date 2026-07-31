@@ -37,38 +37,9 @@ When writing to `C:/Obsidian/Claude_State/MARVEL scraping.md`, always overwrite 
 
 ## Directory Structure
 
-```
-C:\Code\MARVEL\
-├── docs\                         # Reference PDFs and agent docs
-├── molecules\
-│   └── <molecule>\               # One folder per molecule (e.g. CS2, CO, H2O)
-│       ├── papers\               # Source PDFs and supplementary files
-│       ├── markdown\             # MinerU cloud output, one folder per paper (see Step 2)
-│       ├── csv\                  # Batch CSVs, merged CSV
-│       ├── reviews\              # Reviewer agent reports (<paperID>_review.md)
-│       └── output\               # Final MARVEL .txt files
-├── scripts\
-│   ├── mineru_cloud.py           # Batch OCR via MinerU cloud API → markdown + bbox JSON
-│   ├── csv_to_marvel.py          # Merge batch CSVs and format to MARVEL
-│   └── templates\
-│       └── scraper_template.md   # Extraction-brief skeleton (anti-fabrication rules, QN columns, hazards)
-├── archive\
-│   └── ocr-pipeline-v1\          # Retired self-hosted OCR pipeline — see Pipeline Workflow note
-└── CLAUDE.md                     # This file
-```
-
 Molecule subdirectories are created on demand. A `briefs/` folder may appear under a molecule holding per-paper extraction notes — optional working scratch, not a required stage.
 
-## Reference Papers (Context Only — Not for Extraction)
-
-These PDFs live in `docs/` and serve as reference material for the MARVEL format. They are **not** targets for the extraction pipeline.
-
-| File | Description |
-|------|-------------|
-| `07FuCsTe_Marvel.pdf` | Original MARVEL methodology paper (J. Mol. Spectrosc. 245, 2007). Defines the algorithm, spectroscopic networks, and robust reweighting. |
-| `2012FuCs_Marvel_improved.pdf` | MARVEL algorithmic improvements (JQSRT 113, 2012). Hash-based input, conjugate gradient least-squares. |
-| `2026GrDaPo_COisos_Marvel.pdf` | MARVEL analysis of CO minor isotopologues (ApJS 283, 2026). Diatomic — quantum numbers (v, J). |
-| `24AzAzAb_CO2isos_Marvel.pdf` | MARVEL analysis of rare CO₂ isotopologues (J. Mol. Spectrosc. 405, 2024). Linear triatomic, Herzberg notation. |
+Reference PDFs list, the Quantum Number table, and Isotopologue Shorthand are lookup material, not needed to decide what to do next — see `docs/agents/reference.md`.
 
 ## MARVEL Input Format
 
@@ -89,6 +60,18 @@ transition_wavenumber   uncertainty   v1_upper   v2_upper   l2_upper   v3_upper 
 transition_wavenumber   uncertainty   v1_upper   v2_upper   v3_upper   J_upper   Ka_upper   Kc_upper   v1_lower   v2_lower   v3_lower   J_lower   Ka_lower   Kc_lower   ID
 ```
 
+### Diatomics with electronic transitions (e.g. SO bands crossing electronic states)
+```
+transition_wavenumber   uncertainty   state_upper   v_upper   J_upper   F_upper   ef_upper   state_lower   v_lower   J_lower   F_lower   ef_lower   ID
+```
+Use only when a paper's transitions span more than one electronic state — a single-state diatomic paper stays on the plain Diatomics scheme above. `state_*` is a plain term-symbol string (e.g. `X3Sigma-`, `a1Delta`) — see `docs/agents/reference.md` for term-symbol notation. `F_*`/`ef_*` are blank for singlet states and populated only when the paper resolves fine-structure sublevel/parity. Generalizes to other molecular types by prepending `state_upper`/`state_lower` to that type's existing QN block whenever a paper includes electronic transitions.
+
+### Diatomics with hyperfine structure (e.g. CS isotopologues with resolved nuclear-spin splitting)
+```
+transition_wavenumber   uncertainty   v_upper   J_upper   F_upper   v_lower   J_lower   F_lower   ID
+```
+Use only when a paper reports individually resolved hyperfine components (from nuclear spin I > 0 — quadrupole and/or spin-rotation coupling) rather than a single unresolved line per (v, J) pair — an isotopologue with no resolved hyperfine splitting in a given paper stays on the plain Diatomics scheme above, even if other isotopologues in the same paper do need this scheme. `F_upper`/`F_lower` here is the **nuclear hyperfine** quantum number (half-integer or integer depending on nuclear spin, e.g. `F=5/2,3/2,1/2` for I=3/2) — a distinct physical quantity from the `F_upper`/`F_lower` electronic fine-structure sublevel label used in the "Diatomics with electronic transitions" scheme above; the two schemes are never combined in the same paper's output, and column meaning is always inferred from which scheme a given CSV/file is using, not the column name alone. A paper's derived/fitted hyperfine constants (nuclear quadrupole coupling `eQq`, spin-rotation `C_I`, hypothetical hyperfine-free frequency `v0`, etc.) are fit outputs, not raw transition data — never extract them; only the individually resolved component frequencies belong in MARVEL input, per the anti-fabrication rule. Generalizes to other molecular types by appending `F_upper`/`F_lower` immediately after `J_upper`/`J_lower` in that type's existing QN block whenever a paper reports hyperfine-resolved lines.
+
 ### ID Construction Rules
 Format: `YYAuthAuth.N`
 - **YY** — 2-digit publication year
@@ -105,134 +88,21 @@ Saved in `molecules/<molecule>/output/`.
 
 ## Pipeline Workflow
 
-### Overview
+Use the `marvel-pipeline` skill for the full step-by-step guide (set up molecule dir → OCR → validate + extract → merge → mechanical validate → reviewer sub-agent hard gate → format).
 
-Two-stage pipeline: **MinerU cloud API** (OCR → markdown + bounding-box JSON) → **Claude** (validate, extract, review — interactive in this session).
-
-```
-mineru_cloud.py (cloud OCR) → Claude validate+extract → csv_to_marvel.py merge → reviewer agent (hard gate) → csv_to_marvel.py format
-```
-
-> **Why cloud, not self-hosted.** Self-hosting the OCR model was built and rejected. The open MinerU-2.5 1.2B model, run locally/on HPC, silently corrupts ~8% of values on hard scanned papers (digit misreads like `2186→2189`, high-J column drops, decimal-comma confusion) — unacceptable when a single wrong wavenumber silently corrupts the spectroscopic network. The cloud **`vlm`** model is the one whose quality was validated cell-by-cell against ground truth. The entire retired self-hosted pipeline (Gemini pre-screener, HPC OCR models, SLURM scripts) lives in `archive/ocr-pipeline-v1/`. Do not re-litigate self-hosting without new evidence that the local model has closed that gap.
-
-1. **OCR** (cloud): `python scripts/mineru_cloud.py molecules/<mol>/papers --out-dir molecules/<mol>/markdown`
-2. **Validate + extract** (Claude, interactive): read each paper's `full.md` + `content_list.json`, verify suspect cells against bbox crops of the page, write batch CSVs to `csv/`
-3. **Merge**: `python scripts/csv_to_marvel.py merge <mol> <paperID>`
-4. **Reviewer agent** → `molecules/<mol>/reviews/<paperID>_review.md` — **HARD GATE**
-5. **Format**: `python scripts/csv_to_marvel.py format <mol> <paperID>`
-
----
-
-### Step 1: Set Up Molecule Directory
-
-```bash
-mkdir -p molecules/<mol>/papers molecules/<mol>/markdown molecules/<mol>/csv molecules/<mol>/reviews molecules/<mol>/output
-```
-
-Place source PDFs (and supplementary files, if any) in `papers/`. If a paper's transitions live only in an online supplement, add the supplement to `papers/` — the OCR stage handles the main PDF, but supplementary data files are often clean text/CSV that can be parsed directly without OCR.
-
----
-
-### Step 2: OCR via MinerU Cloud API
-
-```bash
-python scripts/mineru_cloud.py molecules/<mol>/papers --out-dir molecules/<mol>/markdown
-```
-
-Submits every PDF in one batch to the MinerU v4 API (model `vlm`, OCR on), polls, and unzips one result folder per paper into `markdown/<paperID>/`:
-
-- `full.md` — **source of truth for table bodies.** MinerU emits tables as HTML `<table>` blocks (not pipe markdown), with dual/triple-column layouts correctly unpacked.
-- `<paperID>_content_list.json` — **source of truth for structure**: per-block `type`, `bbox`, `page_idx`, `table_caption`, `table_footnote`, `table_body`. Use this for captions, page mapping, and bbox crops.
-- `images/`, `layout.json`, `<paperID>_origin.pdf` — page renders and layout data for the validation crops. (MinerU emits these with an internal UUID prefix; `mineru_cloud.py` renames them to the paper stem.)
-
-**Token**: resolved from `--token`, then `$MINERU_API_TOKEN`, then the desktop client's `config.json` (`C:/Users/Marco/MinerU/config.json`, field `state.client_api_token`). Free tier: 2000 pages/day at top priority (more at reduced priority), 10,000 files/day. Data egress is fine — these are published papers.
-
-**Known gotcha**: on a multi-page table, continuation pages register a caption block in `content_list.json` but often **no `table_body`** — the body is only in `full.md`. Always reconcile the two; never trust `content_list.json` alone for row counts.
-
----
-
-### Step 3: Validate + Extract (Interactive — Claude)
-
-One Claude pass per paper does reasoning **and** extraction (there is no separate pre-screener API call — that reasoning is folded in here). For each paper:
-
-1. Read `markdown/<paperID>/full.md` and `<paperID>_content_list.json`. Read the paper's Experimental section (from `full.md`) for the stated measurement uncertainty and band assignments.
-2. **Validate before extracting.** MinerU cloud is strong but not infallible on hard scans. For any cell that looks off — broken monotonicity in a branch, a header-span flattened into left-packed cells, a suspiciously short row — crop the table's `bbox` from the page image and read the value visually. Fix obvious OCR errors (header-span misalignment, decimal punctuation) against the crop. Where the crop is genuinely illegible, mark the cell **UNREADABLE** — never guess a digit.
-3. Apply quantum-number assignments, the paper's uncertainty, and band/isotopologue labels to parse the HTML tables into the correct CSV column structure (see MARVEL Input Format + Quantum Number Reference).
-4. Emit batch CSVs to `molecules/<mol>/csv/<paperID>_batch<N>.csv`, columns:
-   `transition_wavenumber, uncertainty, <QN columns>, id, iso, notes`
-   Use `notes` to record table/band/branch provenance and any OCR fix or UNREADABLE flag.
+### Extraction Rules (always apply during extraction — Step 3 of the pipeline)
 
 **Anti-fabrication rule**: a wrong value silently corrupts the spectroscopic network — there is no downstream physical check. Never invent, interpolate, or "smooth" a value. An UNREADABLE flag is always correct over a guess. See `scripts/templates/scraper_template.md` for the full extraction-brief skeleton.
 
 **Uncertainty rule**: the uncertainty column comes **only** from what the paper explicitly states — either a **global measurement uncertainty/resolution** quoted in the text (applied to every transition) or a **per-transition uncertainty column** in the tables (applied row by row). Never infer it, never split blended vs. clean with made-up values, never derive it from obs-calc/residuals. If the paper states no uncertainty at all, flag `REQUIRES MANUAL REVIEW` — do not guess.
 
----
+**Parity (e/f) rule** (electronic-transition diatomics only — `ef_upper`/`ef_lower` columns): three cases, decided per row from what the paper states, molecule-oblivious.
+- Paper explicitly states/labels which parity component was measured → record the real `e`/`f` value directly.
+- Parity doesn't apply to that state at all (no Λ-doubling/parity-splitting concept for it) → leave `ef_upper`/`ef_lower` blank, no `notes` token.
+- Paper doesn't resolve parity for that state (components are unmeasured/degenerate at its precision) → leave `ef_upper`/`ef_lower` blank **and** add `parity: unresolved` to `notes`. A later mechanical step (`csv_to_marvel.py split-parity`, pipeline Step 3.5) expands that row into an `e`/`f` pair with the identical wavenumber — extraction never does the duplication itself, same "extraction records, a later mechanical step transforms" pattern as the Unit rule's `reconcile` step.
+Never derive e/f from J-value parity or branch type — that mapping is genuinely Hund's-case- and molecule-dependent, not a general rule (out of scope for this pipeline; treated as a known limitation, not something to infer).
 
-### Step 4: Merge
-
-```bash
-python scripts/csv_to_marvel.py merge <mol> <paperID>
-```
-
-Merges all `<paperID>_batch*.csv` files into `<paperID>_merged.csv` in the same `csv/` directory. Errors if batch files are missing or have mismatched column headers.
-
----
-
-### Step 5: Reviewer Agent
-
-Spawn one reviewer agent with the path to `<paperID>_merged.csv`. **The reviewer must not modify any data.**
-
-If two independent reviewer/extraction passes disagree on a single value (a digit, a symmetry label, etc.), resolve it by directly rendering the source PDF page yourself and reading it visually — ideally side-by-side against an unambiguous reference character on the same page — rather than trusting either pass's confidence language or an "objective" automated method (pixel/hole-counting has been shown to mis-read glyphs). Critically, **`full.md`'s OCR text is not independent ground truth** — it can misread the same glyph a disputed cell is arguing about, so cross-checking a disputed value against `full.md` only tells you what MinerU's text layer guessed, not what the page actually shows. Always settle real disagreements against the rendered page image itself.
-
-**Validation checks:**
-1. **ID format** — every entry matches `YYAuthAuth.N`; N resets to 1 per isotopologue
-2. **Uncertainty** — all values positive, non-blank (N/A only if `notes` explains why)
-3. **Wavenumber range** — positive, physically plausible for the molecule and band
-4. **Quantum numbers** — J ≥ 0, v ≥ 0, |l₂| ≤ v₂ for linear triatomics
-5. **Isotopologue labels** — consistent notation throughout
-6. **Transition counts** — extracted vs. expected; flag if <80% of expected for any isotopologue
-7. **UNREADABLE rows** — list all, grouped by table
-8. **Cross-batch duplicates** — same wavenumber (±0.002 cm⁻¹) + same quantum numbers but different ID
-
-**Report** (written to `molecules/<mol>/reviews/<paperID>_review.md`):
-- Section 1: check-by-check PASS / FAIL / PARTIAL with specifics
-- Section 2: all flagged rows with location and reason
-- Section 3: UNREADABLE row inventory
-- Section 4: final recommendation — one of:
-  - `READY FOR MARVEL CONVERSION`
-  - `READY WITH CAVEATS` (list caveats — acceptable gaps that do not block conversion)
-  - `REQUIRES MANUAL REVIEW` (list specific blockers)
-
-**Hard gate**: if the recommendation is `REQUIRES MANUAL REVIEW`, do not proceed to Step 6. Surface the blockers to the user.
-
----
-
-### Step 6: Format
-
-```bash
-python scripts/csv_to_marvel.py format <mol> <paperID>
-```
-
-Reads `<paperID>_merged.csv`, splits by `iso` column, and writes one MARVEL `.txt` file per isotopologue to `molecules/<mol>/output/`. Drops the `iso` and `notes` columns; all other columns are written tab-separated with a header row.
-
----
-
-## Quantum Number Reference
-
-| Molecule Type | Examples | Upper QNs | Lower QNs |
-|---|---|---|---|
-| Diatomic | CO, CS, SiS | v′, J′ | v″, J″ |
-| Linear triatomic | CO₂, CS₂, N₂O | v₁′, v₂′, ℓ₂′, v₃′, J′ | v₁″, v₂″, ℓ₂″, v₃″, J″ |
-| Symmetric top | NH₃ | v′, J′, K′ | v″, J″, K″ |
-| Asymmetric top | H₂O, SO₂ | v₁′, v₂′, v₃′, J′, Ka′, Kc′ | v₁″, v₂″, v₃″, J″, Ka″, Kc″ |
-
-## Isotopologue Shorthand
-
-Papers often use a 3-digit shorthand where each digit is the mass number of the relevant atoms:
-- **CO₂**: 626 = ¹²C¹⁶O₂, 828 = ¹⁸O¹²C¹⁸O, 728 = ¹⁷O¹²C¹⁸O, 838 = ¹⁸O¹³C¹⁸O
-- **CS₂**: digits represent the two S atoms (C implicit) — 323 = ³²S¹²C³²S (parent), 324 = ³²S¹²C³⁴S, 534 = ¹³C³²S₂
-
-Follow the same pattern for other molecules.
+**Unit rule**: never convert units during extraction. Record `transition_wavenumber` and `uncertainty` exactly as printed in the paper's native unit (cm⁻¹, MHz, GHz, etc.) and note the unit explicitly in `notes` for every row (e.g. `unit: MHz`). If a row's uncertainty is stated in a *different* native unit than its wavenumber (e.g. a global fit-uncertainty quoted in kHz for an MHz transition table), state the wavenumber's unit first in `notes` (`unit: MHz`) and the uncertainty's unit afterward wherever it's mentioned (`... 17 kHz ... (unit: kHz)`) — `csv_to_marvel.py reconcile` (Step 6.5, before Format) parses first-vs-later `unit:` mentions to convert the uncertainty into the wavenumber's unit mechanically, logging the conversion in `notes`. Extraction itself never converts; reconciliation across units is a single later, mechanical, logged step — not a judgment call made during extraction.
 
 ---
 

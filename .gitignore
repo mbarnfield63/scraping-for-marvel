@@ -9,6 +9,7 @@ wheels/
 # Virtual environments
 .venv
 .venv-mineru
+.venv-vlm
 
 # Molecule data is local. Only molecules/example_molecule/ (the template
 # layout) is tracked; create your own molecules/<name>/ folder to work in and
@@ -19,3 +20,10 @@ molecules/*
 # Files
 archive/
 docs/
+
+# Local scratch space (crops, debug scripts, issue-tracker notes) - not versioned
+.scratch/
+
+# Claude Code local/session state
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

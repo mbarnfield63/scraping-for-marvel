@@ -26,7 +26,27 @@ Expected count: [EXPECTED — transitions expected in this batch, per isotopolog
   Linear triatomic: v1_upper, v2_upper, l2_upper, v3_upper, J_upper, v1_lower, v2_lower, l2_lower, v3_lower, J_lower
   Diatomic: v_upper, J_upper, v_lower, J_lower
   Asymmetric top: v1_upper, v2_upper, v3_upper, J_upper, Ka_upper, Kc_upper, v1_lower, v2_lower, v3_lower, J_lower, Ka_lower, Kc_lower
-  Symmetric top: v_upper, J_upper, K_upper, v_lower, J_lower, K_lower]
+  Symmetric top: v_upper, J_upper, K_upper, v_lower, J_lower, K_lower
+  Diatomic with electronic transitions: state_upper, v_upper, J_upper, F_upper, ef_upper, state_lower, v_lower, J_lower, F_lower, ef_lower
+    (state_* is a term-symbol string, e.g. X3Sigma-; F_* stays blank unless the
+    paper itself resolves fine-structure sublevels — see docs/agents/reference.md
+    for term-symbol notation. Only use this scheme when the paper's transitions
+    span more than one electronic state.
+    ef_*: if the paper states/labels which parity component was measured, record
+    it directly. If parity doesn't apply to that state, leave ef_* blank, no note.
+    If the paper does NOT resolve parity for that state (components unmeasured/
+    degenerate), leave ef_* blank AND add "parity: unresolved" to notes — a later
+    mechanical pipeline step (csv_to_marvel.py split-parity) expands that row into
+    an e/f pair automatically. Never derive e/f from J-value parity or branch type
+    yourself — see CLAUDE.md's Parity (e/f) rule.)]
+  Diatomic with hyperfine structure: v_upper, J_upper, F_upper, v_lower, J_lower, F_lower
+    (F_* is the nuclear hyperfine quantum number, NOT the electronic fine-structure
+    F above — different physical quantity, same column name. Only use this scheme
+    for isotopologues where the paper reports individually resolved hyperfine
+    components (nuclear spin I>0); an isotopologue with unresolved/no hyperfine
+    splitting in the same paper stays on the plain Diatomic scheme. Never extract
+    derived/fitted hyperfine constants (eQq, C_I, v0) — only raw resolved-component
+    frequencies. See docs/agents/reference.md for F range (|J-I| to J+I).)]
 
 ━━ KNOWN HAZARDS ━━
 [HAZARDS — paper-specific issues discovered during pre-screening:
@@ -36,7 +56,9 @@ Expected count: [EXPECTED — transitions expected in this batch, per isotopolog
   - Whether J in table headers is J″ (lower state, standard) or J′ (upper state)
   - Nuclear spin statistics (even-J-only for symmetric isotopologues of linear molecules)
   - Any missing or illegible table sections
-  - Δ or residual columns that must NOT be extracted as wavenumbers]
+  - Δ or residual columns that must NOT be extracted as wavenumbers
+  - Electronic-transition papers only: e/f-parity and F-sublevel misassignment
+    risk, and per-band J-numbering conventions that can differ within one paper]
 
 ━━ PROCEDURE ━━
 
