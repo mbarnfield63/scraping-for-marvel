@@ -125,6 +125,7 @@ one per isotopologue. **These are your results.**
 ```
 molecules/<molecule>/
 ├── papers/     the source PDFs you put in
+├── reference_papers/  lookup only: prior MARVEL compilations, notation/method papers (never extracted)
 ├── markdown/   OCR output (one folder per paper)
 ├── csv/        extracted numbers (batch + merged CSVs)
 ├── reviews/    reviewer reports

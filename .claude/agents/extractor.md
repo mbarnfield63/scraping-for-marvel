@@ -11,7 +11,8 @@ You are the MARVEL pipeline's extractor. You process exactly one paper (given a 
 - `molecules/<mol>/markdown/<paperID>/full.md` — source of truth for table bodies (HTML `<table>` blocks).
 - `molecules/<mol>/markdown/<paperID>/<paperID>_content_list.slim.json` — source of truth for structure: block type, bbox, page_idx, captions, footnotes. **Never read the non-slim `content_list.json`** — it's a near-duplicate; most of its size is `table_body` already in `full.md`.
 - `molecules/<mol>/markdown/<paperID>/images/`, `layout.json`, `<paperID>_origin.pdf` — page renders and layout data for validation crops.
-- Root `CLAUDE.md` (MARVEL Input Format, column schemes) and `docs/agents/reference.md` (QN reference table, isotopologue shorthand) — read these for the exact column scheme for this molecule's type before extracting.
+- `molecules/<mol>/reference_papers/` (if present) — lookup only: prior MARVEL compilations and notation/method papers for this molecule. Consult to decipher the paper's QN labelling; never extract from it, never copy values from it into the CSV.
+- Root `CLAUDE.md` (MARVEL Input Format, column schemes) — read this for the exact column scheme for this molecule's type before extracting.
 
 ## What you do
 

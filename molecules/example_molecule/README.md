@@ -15,6 +15,7 @@ your papers and data live only on your machine.
 | Folder      | What goes here                                                        |
 |-------------|-----------------------------------------------------------------------|
 | `papers/`   | The source PDFs you download. Drop them in here first.                 |
+| `reference_papers/` | Lookup only: earlier MARVEL compilations, notation/method papers. Used to decode QN labels or cross-check — never extracted. |
 | `markdown/` | OCR output — filled in automatically by `scripts/mineru_cloud.py`.    |
 | `csv/`      | Extracted numbers (batch + merged CSVs).                              |
 | `reviews/`  | The reviewer agent's report(s).                                       |

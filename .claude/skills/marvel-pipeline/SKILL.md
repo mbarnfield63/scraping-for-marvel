@@ -8,12 +8,12 @@ description: Step-by-step MARVEL extraction pipeline for this repo — set up a 
 Two-stage pipeline: **MinerU cloud API** (OCR → markdown + bounding-box JSON) → **Claude** (validate + extract in an isolated `marvel-extractor` sub-agent, review in an isolated `marvel-reviewer` sub-agent, orchestration/scripts run in the main session).
 
 ```
-mineru_cloud.py (cloud OCR) → Claude validate+extract → csv_to_marvel.py merge → csv_to_marvel.py split-parity → csv_to_marvel.py validate (script) → reviewer sub-agent (hard gate) → csv_to_marvel.py reconcile → csv_to_marvel.py format
+mineru_cloud.py (cloud OCR) → Claude validate+extract → csv_to_marvel.py merge → csv_to_marvel.py split-parity → csv_to_marvel.py validate (script) → reviewer sub-agent (hard gate) → csv_to_marvel.py reconcile → csv_to_marvel.py format → to_marvel4_input.py (only if running the MARVEL4.1.x binary)
 ```
 
 Cloud OCR over self-hosted: see `docs/adr/0001-cloud-ocr-over-self-hosted.md`.
 
-1. **Set up** molecule directory (`papers/`, `markdown/`, `csv/`, `reviews/`, `output/`)
+1. **Set up** molecule directory (`papers/`, `reference_papers/`, `markdown/`, `csv/`, `reviews/`, `output/`)
 2. **OCR** (cloud): `python scripts/mineru_cloud.py molecules/<mol>/papers --out-dir molecules/<mol>/markdown`
 3. **Validate + extract** (`marvel-extractor` sub-agent, isolated): read each paper's `full.md` + `content_list.slim.json`, verify suspect cells against bbox crops of the page, write batch CSVs to `csv/`
 4. **Merge**: `python scripts/csv_to_marvel.py merge <mol> <paperID>`
@@ -28,10 +28,12 @@ Cloud OCR over self-hosted: see `docs/adr/0001-cloud-ocr-over-self-hosted.md`.
 ### Step 1: Set Up Molecule Directory
 
 ```bash
-mkdir -p molecules/<mol>/papers molecules/<mol>/markdown molecules/<mol>/csv molecules/<mol>/reviews molecules/<mol>/output
+mkdir -p molecules/<mol>/papers molecules/<mol>/reference_papers molecules/<mol>/markdown molecules/<mol>/csv molecules/<mol>/reviews molecules/<mol>/output
 ```
 
 Place source PDFs (and supplementary files, if any) in `papers/`. If a paper's transitions live only in an online supplement, add the supplement to `papers/` — the OCR stage handles the main PDF, but supplementary data files are often clean text/CSV that can be parsed directly without OCR.
+
+Put lookup-only material in `reference_papers/`, not `papers/`: prior MARVEL compilations for the molecule (`*_MARVEL_trans.txt`/`*_states.txt`), line-list/method papers, notation guides. Extractor and reviewer consult it to decipher a source paper's QN labelling or cross-check values against previous works; it is never OCR'd or extracted. Only `papers/` is pipeline input.
 
 ---
 
@@ -59,7 +61,7 @@ Spawn the `marvel-extractor` sub-agent (`.claude/agents/extractor.md`) per paper
 
 1. Reads `markdown/<paperID>/full.md` and `<paperID>_content_list.slim.json` (not the full, non-slim `content_list.json` — see Step 2), including the Experimental section for stated measurement uncertainty and band assignments.
 2. **Validates before extracting.** MinerU cloud is strong but not infallible on hard scans. For any cell that looks off — broken monotonicity in a branch, a header-span flattened into left-packed cells, a suspiciously short row — it crops the table's `bbox` from the page image and reads the value visually. Fixes obvious OCR errors (header-span misalignment, decimal punctuation) against the crop. Where the crop is genuinely illegible, marks the cell **UNREADABLE** — never guesses a digit.
-3. Applies quantum-number assignments, the paper's uncertainty, and band/isotopologue labels to parse the HTML tables into the correct CSV column structure (see MARVEL Input Format in CLAUDE.md + `docs/agents/reference.md` for the QN table).
+3. Applies quantum-number assignments, the paper's uncertainty, and band/isotopologue labels to parse the HTML tables into the correct CSV column structure (see MARVEL Input Format in CLAUDE.md).
 4. Emits batch CSVs to `molecules/<mol>/csv/<paperID>_batch<N>.csv`, columns:
    `transition_wavenumber, uncertainty, <QN columns>, id, iso, notes`
    Using `notes` to record table/band/branch provenance and any OCR fix or UNREADABLE flag.
@@ -138,3 +140,21 @@ python scripts/csv_to_marvel.py format <mol> <paperID>
 ```
 
 Reads `<paperID>_merged.csv`, splits by `iso` column, and writes one MARVEL `.txt` file per isotopologue to `molecules/<mol>/output/`. Drops the `iso` and `notes` columns; all other columns are written tab-separated with a header row.
+
+This `output/*.txt` file (tab-separated, header row, `2*NQN+3` columns: wavenumber, uncertainty, `<NQN>` upper, `<NQN>` lower, id) is this pipeline's **canonical** format and is as far as Steps 1-9 go. It is not yet accepted by the compiled MARVEL4.1.x binary — see Step 10.
+
+---
+
+### Step 10: MARVEL4.1.x input conversion (script, mechanical — only when running the real binary)
+
+```bash
+python scripts/to_marvel4_input.py molecules/<mol>/output/<file>.txt -o <out>.txt
+```
+
+Verified 2026-09 while running SO 34S16O through `C:\Code\versions_MARVEL\Marvel4.1.x`: the compiled MARVEL4.1.x binary parses transitions-file lines **positionally** (`Source_Code_CPP/MARVEL4.1.cpp` ~line 340-372) and requires `2*NQN + 4` whitespace-delimited columns — `wavenumber, uncorig, unc, <NQN upper>, <NQN lower>, id` — not this pipeline's own `2*NQN + 3` canonical format (a single `uncertainty` column, no separate `uncorig`). Confirmed against `molecules/SO/reference_papers/32S-16O_MARVEL_trans.txt`, Brady et al. (2024)'s real, working MARVEL4.1 input for 32S16O, which has the full 14 columns for their NQN=5 electronic-transition schema. Without the extra column, MARVEL4.1.x reads its ID field out of bounds and crashes or silently corrupts. This is a systemic, molecule-oblivious gap — every file this pipeline ever formats for the MARVEL4.1.x binary needs this step, not just SO.
+
+`to_marvel4_input.py` inserts a duplicated `uncorig` column (= the existing `uncertainty` value) immediately after the wavenumber column, converting `2*NQN+3` → `2*NQN+4` columns. Duplication (not a fabricated second value) is the only non-fabrication-rule-compliant choice, since this pipeline has never tracked two independently-sourced uncertainties for the same transition — MARVEL4.1's own bootstrap reweighting still adjusts `unc` (the copy in the `unc` slot) from that same real starting point. Accepts either a canonical tab-separated `output/*.txt` file (header auto-detected and dropped) or a header-less, whitespace-separated, already-assembled file (e.g. a `combined/*_combined.txt` multi-source file). Output is always header-less, single-space-delimited, ready for `Marvel4.1.x -t <output>`.
+
+Run this as the **last** step, immediately before invoking the MARVEL4.1.x binary — never write its output back into `molecules/<mol>/output/`; keep it in a scratch/working location (e.g. `.scratch/<mol>-marvel/`), since it is a binary-specific reformatting, not part of this pipeline's canonical deliverable.
+
+**Invocation gotcha (verified 2026-09, SO 34S16O run)**: `Marvel4.1.x -n <NQN> -t <trans> -s <segment>` accepts `--bootstrap/-b` (100 default iterations), `--bootiter <int>` (implies `-b`), and `--minsize <int>` (default 200 — minimum network-component size to report/solve). **`--minsize 1` (or any very low value) can crash the binary** with `wrong decomp 1` (an Eigen Cholesky decomposition failure on a degenerate 1x1 linear system) on otherwise-valid data — this is an artifact of the minsize floor, not a sign of bad input. Use the default (or ≥2) for a real run; only lower it to inspect small components' raw transitions, and expect a possible crash if you do. If running from a sandboxed/scripted harness (not an interactive terminal), also expect `wsl.exe` invocations to carry large (multi-minute), seemingly per-call latency — batch every planned run into as few `wsl.exe -e bash -lc "..."` calls as possible rather than one call per run.

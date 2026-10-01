@@ -29,8 +29,7 @@ Expected count: [EXPECTED — transitions expected in this batch, per isotopolog
   Symmetric top: v_upper, J_upper, K_upper, v_lower, J_lower, K_lower
   Diatomic with electronic transitions: state_upper, v_upper, J_upper, F_upper, ef_upper, state_lower, v_lower, J_lower, F_lower, ef_lower
     (state_* is a term-symbol string, e.g. X3Sigma-; F_* stays blank unless the
-    paper itself resolves fine-structure sublevels — see docs/agents/reference.md
-    for term-symbol notation. Only use this scheme when the paper's transitions
+    paper itself resolves fine-structure sublevels. Only use this scheme when the paper's transitions
     span more than one electronic state.
     ef_*: if the paper states/labels which parity component was measured, record
     it directly. If parity doesn't apply to that state, leave ef_* blank, no note.
@@ -46,7 +45,7 @@ Expected count: [EXPECTED — transitions expected in this batch, per isotopolog
     components (nuclear spin I>0); an isotopologue with unresolved/no hyperfine
     splitting in the same paper stays on the plain Diatomic scheme. Never extract
     derived/fitted hyperfine constants (eQq, C_I, v0) — only raw resolved-component
-    frequencies. See docs/agents/reference.md for F range (|J-I| to J+I).)]
+    frequencies. Valid F range is |J-I| to J+I.)]
 
 ━━ KNOWN HAZARDS ━━
 [HAZARDS — paper-specific issues discovered during pre-screening:

@@ -9,17 +9,17 @@ The MARVEL algorithm (Furtenbacher, Császár & Tennyson 2007; Furtenbacher & Cs
 ## Operating Rules
 
 ### 1. Initialize
-When the user says **"get up to speed"**, immediately read the Obsidian state file at:
-`C:/Obsidian/Claude_State/MARVEL scraping.md` to reconstruct full context.
+When the user says **"get up to speed"**, invoke the `get-up-to-speed` skill. It reads the Obsidian state file at:
+`C:/Code/Obsidian/PhD/MARVEL scraping/MARVEL scraping_state.md` to reconstruct full context.
 
 ### 2. Log & Save
-When reaching a milestone or when the user says **"save state"**, overwrite the Obsidian state file (`C:/Obsidian/Claude_state/MARVEL scraping.md`) with a clean update (see Rule 4 format) and append a summary of work done to the log file (`C:/Obsidian/Logs/MARVEL scraping Log.md`). Never change any other files within `C:/Obsidian/`.
+When reaching a milestone or when the user says **"save state"**, invoke the `save-state` skill. It overwrites the Obsidian state file (`C:/Code/Obsidian/PhD/MARVEL scraping/MARVEL scraping_state.md`) with a clean update (see Rule 4 format) and appends a summary of work done to the log file (`C:/Code/Obsidian/PhD/MARVEL scraping/MARVEL scraping Log.md`). Never change any other files within `C:/Code/Obsidian/`.
 
 ### 3. Never delete untracked files outside your own run
 Never delete, move-as-cleanup, or overwrite an untracked file in this repo unless it was created by the current agent/session's own run (e.g. a temp file you just wrote to your own scratchpad). Untracked files (`git status`) are frequently in-progress user work, not junk — `git` gives no recovery path for them if deleted. This applies even to "obviously superfluous"-looking files (stray `.txt`/`.json` scratch files at the repo root, etc.) and even when doing routine cleanup. If a file looks like leftover clutter and you did not create it in this run, leave it alone or ask the user before touching it.
 
 ### 4. Obsidian State File Format
-When writing to `C:/Obsidian/Claude_State/MARVEL scraping.md`, always overwrite with:
+When writing to `C:/Code/Obsidian/PhD/MARVEL scraping/MARVEL scraping_state.md`, always overwrite with:
 
 ```
 # MARVEL scraping — Claude State
@@ -39,11 +39,11 @@ When writing to `C:/Obsidian/Claude_State/MARVEL scraping.md`, always overwrite 
 
 Molecule subdirectories are created on demand. A `briefs/` folder may appear under a molecule holding per-paper extraction notes — optional working scratch, not a required stage.
 
-Reference PDFs list, the Quantum Number table, and Isotopologue Shorthand are lookup material, not needed to decide what to do next — see `docs/agents/reference.md`.
+`molecules/<mol>/reference_papers/` holds lookup material for that molecule — prior MARVEL compilations (published `*_MARVEL_trans.txt`/`*_states.txt`), line-list/method papers and their supplements — used to decipher a paper's QN notation or to cross-check against previous works. Never extract from it: it is not OCR'd or fed to Steps 2-9; only `papers/` is pipeline input. Final MARVEL4 deliverables for a molecule are also kept here.
 
 ## MARVEL Input Format
 
-Tab-separated. Column scheme depends on molecular type.
+Tab-separated. Column scheme depends on molecular type. This is the pipeline's **canonical** format (`csv_to_marvel.py format` output, `molecules/<mol>/output/*.txt`) — it is a different, smaller column count than what the compiled MARVEL4.1.x binary actually requires; see `marvel-pipeline` skill Step 10 (`scripts/to_marvel4_input.py`) for the one extra mechanical step (inserting a duplicated `uncorig` column) needed before feeding a file to `Marvel4.1.x`.
 
 ### Diatomics (e.g. CO, CS)
 ```
@@ -64,7 +64,7 @@ transition_wavenumber   uncertainty   v1_upper   v2_upper   v3_upper   J_upper  
 ```
 transition_wavenumber   uncertainty   state_upper   v_upper   J_upper   F_upper   ef_upper   state_lower   v_lower   J_lower   F_lower   ef_lower   ID
 ```
-Use only when a paper's transitions span more than one electronic state — a single-state diatomic paper stays on the plain Diatomics scheme above. `state_*` is a plain term-symbol string (e.g. `X3Sigma-`, `a1Delta`) — see `docs/agents/reference.md` for term-symbol notation. `F_*`/`ef_*` are blank for singlet states and populated only when the paper resolves fine-structure sublevel/parity. Generalizes to other molecular types by prepending `state_upper`/`state_lower` to that type's existing QN block whenever a paper includes electronic transitions.
+Use only when a paper's transitions span more than one electronic state — a single-state diatomic paper stays on the plain Diatomics scheme above. `state_*` is a plain term-symbol string (e.g. `X3Sigma-`, `a1Delta`). `F_*`/`ef_*` are blank for singlet states and populated only when the paper resolves fine-structure sublevel/parity. Generalizes to other molecular types by prepending `state_upper`/`state_lower` to that type's existing QN block whenever a paper includes electronic transitions.
 
 ### Diatomics with hyperfine structure (e.g. CS isotopologues with resolved nuclear-spin splitting)
 ```
@@ -119,3 +119,13 @@ Default label vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `read
 ### Domain docs
 
 Single-context repo: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
