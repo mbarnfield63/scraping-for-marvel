@@ -1,0 +1,6 @@
+# graphify tier-1 scope for this project.
+# .gitignore excludes docs/ and archive/ from version control (local-only
+# notes / deprecated pipeline), but they are real documentation and code we
+# want in the knowledge graph, so re-include them here.
+!docs/
+!archive/

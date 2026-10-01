@@ -25,5 +25,6 @@ docs/
 .scratch/
 
 # Claude Code local/session state
-.claude/settings.local.json
+.claude/
 .claude/scheduled_tasks.lock
+graphify-out/
