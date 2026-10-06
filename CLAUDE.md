@@ -72,6 +72,15 @@ transition_wavenumber   uncertainty   v_upper   J_upper   F_upper   v_lower   J_
 ```
 Use only when a paper reports individually resolved hyperfine components (from nuclear spin I > 0 — quadrupole and/or spin-rotation coupling) rather than a single unresolved line per (v, J) pair — an isotopologue with no resolved hyperfine splitting in a given paper stays on the plain Diatomics scheme above, even if other isotopologues in the same paper do need this scheme. `F_upper`/`F_lower` here is the **nuclear hyperfine** quantum number (half-integer or integer depending on nuclear spin, e.g. `F=5/2,3/2,1/2` for I=3/2) — a distinct physical quantity from the `F_upper`/`F_lower` electronic fine-structure sublevel label used in the "Diatomics with electronic transitions" scheme above; the two schemes are never combined in the same paper's output, and column meaning is always inferred from which scheme a given CSV/file is using, not the column name alone. A paper's derived/fitted hyperfine constants (nuclear quadrupole coupling `eQq`, spin-rotation `C_I`, hypothetical hyperfine-free frequency `v0`, etc.) are fit outputs, not raw transition data — never extract them; only the individually resolved component frequencies belong in MARVEL input, per the anti-fabrication rule. Generalizes to other molecular types by appending `F_upper`/`F_lower` immediately after `J_upper`/`J_lower` in that type's existing QN block whenever a paper reports hyperfine-resolved lines.
 
+### N2O — polyad scheme (24TeFuYu)
+```
+transition_wavenumber   uncertainty   P_upper   l_upper   N_upper   ef_upper   J_upper   P_lower   l_lower   N_lower   ef_lower   J_lower   ID
+```
+N2O replaces the linear-triatomic Herzberg scheme with the 24TeFuYu polyad labels: `P = 2v1+v2+4v3`, `l` vibrational angular momentum, `N` polyad counting number (canonical 24TeFuYu numbering, carried to minor isotopologues via Ames-1 levels), `ef` rotationless parity. Herzberg labels live only in `molecules/N2O/states/<iso>_states.tsv`. Two N2O-only exceptions to the Extraction Rules below, applied in the mechanical apply step (`scripts/n2o_apply.py`), never during extraction:
+- **Uncertainty**: for papers that are 24TeFuYu sources, use 24TeFuYu's published per-source choice (Appendix A / Table 2), logged in `notes`; other papers keep the manual-review rule.
+- **Parity**: e/f follows the linear-molecule dipole selection rule (l=0 → e; with one side l=0, P/R → e, Q → f); both sides l>0 and unlabelled → `parity: unresolved` and split.
+Full plan, decisions and the per-paper agent brief: `molecules/N2O/polyad_plan.md`.
+
 ### ID Construction Rules
 Format: `YYAuthAuth.N`
 - **YY** — 2-digit publication year
