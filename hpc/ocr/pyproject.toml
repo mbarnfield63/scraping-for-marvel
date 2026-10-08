@@ -1,0 +1,31 @@
+[project]
+name = "marvel-ocr"
+version = "0.1.0"
+description = "Self-hosted MinerU OCR job for Hypatia (see .scratch/hypatia-ocr/PRD.md)"
+requires-python = "==3.12.*"
+dependencies = [
+    "mineru[full]==4.0.10",
+    # Hypatia's driver 535 tops out at CUDA 12.2. PyPI's vllm/torch are cu130 builds
+    # (would need forward-compat libs); cu129 builds run via minor-version compat.
+    "vllm==0.28.0",
+    "torch==2.13.0",
+    "torchvision",
+    "torchaudio",
+    "torchcodec",
+]
+
+[tool.uv]
+# Only ever runs inside the Hypatia container; don't resolve Windows/macOS wheels.
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+
+[[tool.uv.index]]
+name = "pytorch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu129" }
+torchvision = { index = "pytorch-cu129" }
+torchaudio = { index = "pytorch-cu129" }
+torchcodec = { index = "pytorch-cu129" }
+vllm = { url = "https://github.com/vllm-project/vllm/releases/download/v0.28.0/vllm-0.28.0+cu129-cp38-abi3-manylinux_2_28_x86_64.whl" }

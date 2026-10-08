@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Self-hosted MinerU OCR on Hypatia; drop-in for scripts/mineru_cloud.py.
+#
+#   hpc/ocr/run <pdf-or-dir> --out-dir <dir> [--tier standard|advanced] [sbatch overrides]
+#
+# Pushes the PDFs, runs hpc/ocr/ocr.sh (waits for it), pulls results into --out-dir,
+# then deletes the remote batch. A100 by default; L40S fallback:
+#   hpc/ocr/run molecules/CS2/papers --out-dir molecules/CS2/markdown --gres=gpu:1 --nodelist=compute-gpu-0-5
+set -euo pipefail
+
+SSH="${SSH_BIN:-/mnt/c/Windows/System32/OpenSSH/ssh.exe} -o BatchMode=yes"
+HOST="${HPC_HOST:-Hypatia}"
+here=$(dirname "$(realpath "$0")")
+
+[ $# -ge 1 ] || { sed -n 4p "$0" >&2; exit 1; }
+target=$1; shift
+out="" tier=standard
+while [ $# -gt 0 ]; do
+    case $1 in
+        --out-dir) out=$2; shift 2 ;;
+        --tier) tier=$2; shift 2 ;;
+        *) break ;;  # the rest goes to sbatch
+    esac
+done
+[ -n "$out" ] || { echo "--out-dir is required" >&2; exit 1; }
+
+if [ -d "$target" ]; then pdfs=("$target"/*.pdf); else pdfs=("$target"); fi
+[ -f "${pdfs[0]}" ] || { echo "no PDFs at $target" >&2; exit 1; }
+
+# /home on Hypatia is shared and often near full; a job that runs out mid-write wastes the queue wait.
+free=$($SSH "$HOST" "df -BG --output=avail ~ | tail -1" | tr -dc 0-9)
+[ "$free" -ge 20 ] || { echo "Hypatia /home has ${free}G free (<20G); not submitting" >&2; exit 1; }
+
+ts=$(date +%Y%m%d-%H%M%S)
+batch=data/MARVEL_scraping/ocr/$ts
+echo "${#pdfs[@]} PDF(s) -> $HOST:~/$batch (tier $tier)"
+rsync -a --chmod=go-w -s -e "$SSH" --rsync-path="mkdir -p $batch/in && rsync" "${pdfs[@]}" "$HOST:$batch/in/"
+$SSH "$HOST" "echo $tier > $batch/tier"
+
+hpc-submit --watch "$here/ocr.sh" --job-name="ocr-$ts" "$@"
+
+# rsync can't pull through Windows ssh.exe; tar stream instead.
+mkdir -p "$out"
+$SSH "$HOST" "test -d $batch/out && tar cf - -C $batch/out ." | tar xf - -C "$out" || true
+
+missing=()
+for p in "${pdfs[@]}"; do
+    stem=$(basename "$p" .pdf)
+    [ -f "$out/$stem/full.md" ] || missing+=("$stem")
+done
+if [ ${#missing[@]} -gt 0 ]; then
+    echo "MISSING output for: ${missing[*]} (remote batch kept at ~/$batch; see the slurm log above)" >&2
+    exit 1
+fi
+$SSH "$HOST" "rm -rf $batch"
+echo "done: ${#pdfs[@]} paper(s) in $out"
+
+# Self-hosted MinerU concatenates stacked doublets (12,31 over 095,78 -> 12,31095,78), which reads as
+# one plausible value. Flag cells with two decimal separators for a crop check during extraction.
+for p in "${pdfs[@]}"; do
+    stem=$(basename "$p" .pdf)
+    hits=$(grep -oP '<td[^>]*>\K[^<]*' "$out/$stem/full.md" | grep -P '\d[.,]\d+[.,]\d' || true)
+    [ -z "$hits" ] || echo "CHECK $stem: $(echo "$hits" | wc -l) cell(s) with two decimal separators: $(echo "$hits" | head -5 | tr '\n' ' ')"
+done

@@ -22,7 +22,11 @@ experience.** You run a couple of commands and answer questions when asked.
    ```
    That installs everything the scripts need.
 
-2. **A MinerU account** (free) for the OCR step. Sign up at
+2. **Hypatia access** for the OCR step: SSH to the UCL Hypatia cluster plus the
+   `hpc-submit` tooling from `hypatia-scripts`. Without it, use the cloud
+   fallback below.
+
+   **A MinerU account** (free), needed only for the cloud fallback. Sign up at
    [mineru.net](https://mineru.net), then either:
    - install the MinerU desktop app and sign in (the scripts find your token
      automatically), **or**
@@ -61,10 +65,15 @@ Copy `74MaSa_CS2.pdf` into `molecules/CS2/papers/`.
 
 ### 2. Read the PDF with OCR
 ```bash
-python scripts/mineru_cloud.py molecules/CS2/papers --out-dir molecules/CS2/markdown
+hpc/ocr/run molecules/CS2/papers --out-dir molecules/CS2/markdown
 ```
-This sends every PDF in `papers/` to MinerU, waits, and saves the results
-into `markdown/`. Each paper gets its own folder containing:
+This sends every PDF in `papers/` to MinerU running on a GPU on the Hypatia
+cluster, waits, and saves the results into `markdown/`. It needs Hypatia SSH
+access (and the UCL VPN off campus). If the A100 queue is long, add
+`--gres=gpu:1 --nodelist=compute-gpu-0-5` to use the L40S instead. If Hypatia
+is unavailable, the MinerU cloud service takes the same arguments:
+`python scripts/mineru_cloud.py molecules/CS2/papers --out-dir molecules/CS2/markdown`.
+Either way, each paper gets its own folder in `markdown/`. Each paper gets its own folder containing:
 - `full.md` — the paper's text and tables
 - `<paperID>_content_list.json` — where each table sits on the page
 

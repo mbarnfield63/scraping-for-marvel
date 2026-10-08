@@ -1,20 +1,20 @@
 ---
 name: marvel-pipeline
-description: Step-by-step MARVEL extraction pipeline for this repo — set up a molecule directory, OCR papers via MinerU cloud, validate + extract to CSV, merge, mechanically validate, run the reviewer sub-agent, and format to MARVEL .txt output. Use when processing a paper (or a new molecule) into MARVEL input, or when asked what the next pipeline step is.
+description: Step-by-step MARVEL extraction pipeline for this repo — set up a molecule directory, OCR papers via self-hosted MinerU on Hypatia (cloud fallback), validate + extract to CSV, merge, mechanically validate, run the reviewer sub-agent, and format to MARVEL .txt output. Use when processing a paper (or a new molecule) into MARVEL input, or when asked what the next pipeline step is.
 ---
 
 ## Overview
 
-Two-stage pipeline: **MinerU cloud API** (OCR → markdown + bounding-box JSON) → **Claude** (validate + extract in an isolated `marvel-extractor` sub-agent, review in an isolated `marvel-reviewer` sub-agent, orchestration/scripts run in the main session).
+Two-stage pipeline: **MinerU** (self-hosted on Hypatia, cloud API as fallback; OCR → markdown + bounding-box JSON) → **Claude** (validate + extract in an isolated `marvel-extractor` sub-agent, review in an isolated `marvel-reviewer` sub-agent, orchestration/scripts run in the main session).
 
 ```
-mineru_cloud.py (cloud OCR) → Claude validate+extract → csv_to_marvel.py merge → csv_to_marvel.py split-parity → csv_to_marvel.py validate (script) → reviewer sub-agent (hard gate) → csv_to_marvel.py reconcile → csv_to_marvel.py format → to_marvel4_input.py (only if running the MARVEL4.1.x binary)
+hpc/ocr/run (Hypatia OCR; mineru_cloud.py fallback) → Claude validate+extract → csv_to_marvel.py merge → csv_to_marvel.py split-parity → csv_to_marvel.py validate (script) → reviewer sub-agent (hard gate) → csv_to_marvel.py reconcile → csv_to_marvel.py format → to_marvel4_input.py (only if running the MARVEL4.1.x binary)
 ```
 
-Cloud OCR over self-hosted: see `docs/adr/0001-cloud-ocr-over-self-hosted.md`.
+Self-hosted OCR on Hypatia, cloud as fallback: see `docs/adr/0013-self-hosted-ocr-on-hypatia.md` (supersedes ADR-0001).
 
 1. **Set up** molecule directory (`papers/`, `reference_papers/`, `markdown/`, `csv/`, `reviews/`, `output/`)
-2. **OCR** (cloud): `python scripts/mineru_cloud.py molecules/<mol>/papers --out-dir molecules/<mol>/markdown`
+2. **OCR** (Hypatia): `hpc/ocr/run molecules/<mol>/papers --out-dir molecules/<mol>/markdown` (fallback: `python scripts/mineru_cloud.py` with the same arguments)
 3. **Validate + extract** (`marvel-extractor` sub-agent, isolated): read each paper's `full.md` + `content_list.slim.json`, verify suspect cells against bbox crops of the page, write batch CSVs to `csv/`
 4. **Merge**: `python scripts/csv_to_marvel.py merge <mol> <paperID>`
 5. **Split unresolved parity pairs** (script, mechanical, electronic-transition papers only): `python scripts/csv_to_marvel.py split-parity <mol> <paperID>`
@@ -37,19 +37,25 @@ Put lookup-only material in `reference_papers/`, not `papers/`: prior MARVEL com
 
 ---
 
-### Step 2: OCR via MinerU Cloud API
+### Step 2: OCR via self-hosted MinerU on Hypatia (cloud fallback)
 
 ```bash
-python scripts/mineru_cloud.py molecules/<mol>/papers --out-dir molecules/<mol>/markdown
+hpc/ocr/run molecules/<mol>/papers --out-dir molecules/<mol>/markdown
 ```
 
-Submits every PDF in one batch to the MinerU v4 API (model `vlm`, OCR on), polls, and unzips one result folder per paper into `markdown/<paperID>/`:
+Pushes the PDFs to Hypatia, runs `hpc/ocr/ocr.sh` (MinerU 4.0.10, `standard` tier, vLLM) and waits for it, pulls one result folder per paper into `markdown/<paperID>/`, then deletes the remote batch. It defaults to an A100. When the A100 queue is long (check `/hypatia-squeue-all`), append `--gres=gpu:1 --nodelist=compute-gpu-0-5` for the L40S. A 4-paper batch takes about 7 minutes, including about 2 minutes of vLLM startup. Needs Hypatia SSH (UCL VPN when off campus). It refuses to submit if Hypatia `/home` has under 20 GB free. Setup and gotchas: `.scratch/hypatia-ocr/PRD.md` and ADR-0013.
+
+The run ends with a `CHECK <paperID>: N cell(s) with two decimal separators` line when self-hosted MinerU has concatenated a stacked doublet (`12,31` / `095,78` became `12,31095,78`). Pass these to the extractor; it crop-checks them.
+
+**Fallback** when Hypatia is down or full: `python scripts/mineru_cloud.py molecules/<mol>/papers --out-dir molecules/<mol>/markdown` submits every PDF to the MinerU v4 API (model `vlm`, OCR on). The output layout is the same.
+
+Both write, per paper:
 
 - `full.md` — **source of truth for table bodies.** MinerU emits tables as HTML `<table>` blocks (not pipe markdown), with dual/triple-column layouts correctly unpacked.
 - `<paperID>_content_list.slim.json` — **source of truth for structure**: per-block `type`, `bbox`, `page_idx`, `table_caption`, `table_footnote`, and (for table blocks) `has_table_body`. Use this for captions, page mapping, and bbox crops. `table_body` is stripped from this file — it's a byte-for-byte duplicate of what's already in `full.md` (routinely >95% of the raw file's size) — so **read the `.slim.json`, never the full `<paperID>_content_list.json`**, for structure. The full (non-slim) file still exists on disk if a slim-file bug ever needs cross-checking, but should not be the default read.
-- `images/`, `layout.json`, `<paperID>_origin.pdf` — page renders and layout data for the validation crops. (MinerU emits these with an internal UUID prefix; `mineru_cloud.py` renames them to the paper stem.)
+- `images/`, `layout.json`, `<paperID>_origin.pdf` — page renders and layout data for the validation crops. (`mineru_cloud.py` renames the cloud's UUID-prefixed files to the paper stem; `hpc/ocr/ocr.py` writes the same names directly.)
 
-**Token**: resolved from `--token`, then `$MINERU_API_TOKEN`, then the desktop client's `config.json` (`C:/Users/Marco/MinerU/config.json`, field `state.client_api_token`). Free tier: 2000 pages/day at top priority (more at reduced priority), 10,000 files/day. Data egress is fine — these are published papers.
+**Cloud token** (fallback only): resolved from `--token`, then `$MINERU_API_TOKEN`, then the desktop client's `config.json` (`C:/Users/Marco/MinerU/config.json`, field `state.client_api_token`). Free tier: 2000 pages/day at top priority (more at reduced priority), 10,000 files/day. Data egress is fine — these are published papers.
 
 **Known gotcha**: on a multi-page table, continuation pages register a caption block but often have `has_table_body: false` (or the key absent) in `content_list.slim.json` — the body is only in `full.md`. Always reconcile the two; never trust `content_list.slim.json` alone for row counts.
 
@@ -60,7 +66,7 @@ Submits every PDF in one batch to the MinerU v4 API (model `vlm`, OCR on), polls
 Spawn the `marvel-extractor` sub-agent (`.claude/agents/extractor.md`) per paper, passing the molecule dir + paperID. It runs isolated from the calling session — the OCR markdown/image context it reads never touches the main session's history, so it isn't replayed via cache-read through Steps 4-8 (validated: isolated per-paper extraction cut main-session cache-read from a ~60-66M/278-337-turn baseline to ~2.7M/51 turns for a comparable two-paper run). It works to completion and reports back one line per batch file — no back-and-forth needed. For each paper:
 
 1. Reads `markdown/<paperID>/full.md` and `<paperID>_content_list.slim.json` (not the full, non-slim `content_list.json` — see Step 2), including the Experimental section for stated measurement uncertainty and band assignments.
-2. **Validates before extracting.** MinerU cloud is strong but not infallible on hard scans. For any cell that looks off — broken monotonicity in a branch, a header-span flattened into left-packed cells, a suspiciously short row — it crops the table's `bbox` from the page image and reads the value visually. Fixes obvious OCR errors (header-span misalignment, decimal punctuation) against the crop. Where the crop is genuinely illegible, marks the cell **UNREADABLE** — never guesses a digit.
+2. **Validates before extracting.** MinerU (self-hosted or cloud) is strong but not infallible on hard scans; the extractor brief lists each one's known failure modes (doublet merges, repetition loops, dropped cells). For any cell that looks off — broken monotonicity in a branch, a header-span flattened into left-packed cells, a suspiciously short row — it crops the table's `bbox` from the page image and reads the value visually. Fixes obvious OCR errors (header-span misalignment, decimal punctuation) against the crop. Where the crop is genuinely illegible, marks the cell **UNREADABLE** — never guesses a digit.
 3. Applies quantum-number assignments, the paper's uncertainty, and band/isotopologue labels to parse the HTML tables into the correct CSV column structure (see MARVEL Input Format in CLAUDE.md).
 4. Emits batch CSVs to `molecules/<mol>/csv/<paperID>_batch<N>.csv`, columns:
    `transition_wavenumber, uncertainty, <QN columns>, id, iso, notes`
