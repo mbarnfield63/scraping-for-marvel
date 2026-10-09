@@ -40,7 +40,7 @@ Optional unc "label" (mode "set"): text for the notes entry (default "24TeFuYu a
 csv/ is read-only. Writes csv_polyad/<paper>_<iso>.csv (new labels + original labels + obs-Ames)
 and output/N2O_<iso>_<paper>_<stamp>.txt (canonical MARVEL: wn unc P l N ef J P l N ef J ID).
 
-Usage: python scripts/n2o_apply.py <paper>
+Usage: python3 scripts/n2o_apply.py <paper>
 """
 import csv
 import json

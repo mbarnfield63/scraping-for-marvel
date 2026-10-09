@@ -1,6 +1,6 @@
 """Marvel4.1.x runs for one N2O isotopologue: incremental build, full runs, final run.
 
-Usage: python scripts/marvel_steps.py <iso> [--mode steps|full|final] [--tag NAME]
+Usage: python3 scripts/marvel_steps.py <iso> [--mode steps|full|final] [--tag NAME]
                                         [--first SRC,...] [--last SRC,...]
 
 Input:  molecules/N2O/marvel4_input/N2O_<iso>_trans_marvel4.txt + _segment.txt (frozen),

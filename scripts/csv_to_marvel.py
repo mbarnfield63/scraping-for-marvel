@@ -23,6 +23,8 @@ Commands:
                                   Unit rule); this is the one place a conversion is allowed.
     format   <mol> <paper_id>   Split merged CSV by isotopologue
                                   -> molecules/<mol>/output/<mol>_<iso>_<paper_id>_YYYYMMDD_HHMMSS.txt
+    count    <mol>              Rows per paper and isotopologue in csv/ (the merged CSV when there is
+                                  one, else the batch CSVs), with per-isotopologue totals.
 """
 
 import argparse
@@ -73,6 +75,28 @@ def merge(mol: str, paper_id: str) -> None:
         w.writerow(header)
         w.writerows(rows)
     print(f"Merged {len(batches)} batch(es) -> {out.name}  ({len(rows)} rows)")
+
+
+def read_rows(path: Path) -> list[dict]:
+    """Rows of a batch or merged CSV as dicts, skipping '#' provenance lines (a plain DictReader
+    reads them as data)."""
+    with open(path, newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(line for line in f if not line.startswith("#")))
+
+
+def count(mol: str) -> None:
+    csv_dir = BASE / mol / "csv"
+    papers = sorted({f.name.split("_batch")[0] for f in csv_dir.glob("*_batch*.csv")}
+                    | {f.name[: -len("_merged.csv")] for f in csv_dir.glob("*_merged.csv")})
+    totals: Counter = Counter()
+    for pid in papers:
+        merged = csv_dir / f"{pid}_merged.csv"
+        files = [merged] if merged.exists() else sorted(csv_dir.glob(f"{pid}_batch*.csv"))
+        by_iso = Counter(r.get("iso", "?") for f in files for r in read_rows(f))
+        totals += by_iso
+        src = "merged" if merged.exists() else f"{len(files)} batch(es)"
+        print(f"{pid:<22}{src:<14}" + "  ".join(f"{i} {n}" for i, n in sorted(by_iso.items())))
+    print("TOTAL " + "  ".join(f"{i} {n}" for i, n in sorted(totals.items())) + f"  = {sum(totals.values())} rows")
 
 
 def _num(s: str):
@@ -673,8 +697,13 @@ def main() -> None:
         help="Paper-ID substrings to skip (e.g. 82CaDeFa)",
     )
 
+    n = sub.add_parser("count", help="Rows per paper and isotopologue in csv/")
+    n.add_argument("mol", help="Molecule name (e.g. SO)")
+
     args = p.parse_args()
-    if args.cmd == "merge":
+    if args.cmd == "count":
+        count(args.mol)
+    elif args.cmd == "merge":
         merge(args.mol, args.paper_id)
     elif args.cmd == "split-parity":
         split_parity(args.mol, args.paper_id)

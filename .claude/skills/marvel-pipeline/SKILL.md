@@ -14,14 +14,14 @@ hpc/ocr/run (Hypatia OCR; mineru_cloud.py fallback) → Claude validate+extract 
 Self-hosted OCR on Hypatia, cloud as fallback: see `docs/adr/0013-self-hosted-ocr-on-hypatia.md` (supersedes ADR-0001).
 
 1. **Set up** molecule directory (`papers/`, `reference_papers/`, `markdown/`, `csv/`, `reviews/`, `output/`)
-2. **OCR** (Hypatia): `hpc/ocr/run molecules/<mol>/papers --out-dir molecules/<mol>/markdown` (fallback: `python scripts/mineru_cloud.py` with the same arguments)
+2. **OCR** (Hypatia): `hpc/ocr/run molecules/<mol>/papers --out-dir molecules/<mol>/markdown` (fallback: `python3 scripts/mineru_cloud.py` with the same arguments)
 3. **Validate + extract** (`marvel-extractor` sub-agent, isolated): read each paper's `full.md` + `content_list.slim.json`, verify suspect cells against bbox crops of the page, write batch CSVs to `csv/`
-4. **Merge**: `python scripts/csv_to_marvel.py merge <mol> <paperID>`
-5. **Split unresolved parity pairs** (script, mechanical, electronic-transition papers only): `python scripts/csv_to_marvel.py split-parity <mol> <paperID>`
-6. **Validate** (script, mechanical): `python scripts/csv_to_marvel.py validate <mol> <paperID>`
+4. **Merge**: `python3 scripts/csv_to_marvel.py merge <mol> <paperID>`
+5. **Split unresolved parity pairs** (script, mechanical, electronic-transition papers only): `python3 scripts/csv_to_marvel.py split-parity <mol> <paperID>`
+6. **Validate** (script, mechanical): `python3 scripts/csv_to_marvel.py validate <mol> <paperID>`
 7. **Reviewer sub-agent** (judgment only) → `molecules/<mol>/reviews/<paperID>_review.md` — **HARD GATE**
-8. **Reconcile units** (script, mechanical): `python scripts/csv_to_marvel.py reconcile <mol> <paperID>`
-9. **Format**: `python scripts/csv_to_marvel.py format <mol> <paperID>`
+8. **Reconcile units** (script, mechanical): `python3 scripts/csv_to_marvel.py reconcile <mol> <paperID>`
+9. **Format**: `python3 scripts/csv_to_marvel.py format <mol> <paperID>`
 
 ---
 
@@ -86,7 +86,7 @@ Pushes the PDFs to Hypatia, runs `hpc/ocr/ocr.sh` (MinerU 4.0.10, `standard` tie
 
 The run ends with a `CHECK <paperID>: N cell(s) with two decimal separators` line when self-hosted MinerU has concatenated a stacked doublet (`12,31` / `095,78` became `12,31095,78`). Pass these to the extractor; it crop-checks them.
 
-**Fallback** when Hypatia is down or full: `python scripts/mineru_cloud.py molecules/<mol>/papers --out-dir molecules/<mol>/markdown` submits every PDF to the MinerU v4 API (model `vlm`, OCR on). The output layout is the same.
+**Fallback** when Hypatia is down or full: `python3 scripts/mineru_cloud.py molecules/<mol>/papers --out-dir molecules/<mol>/markdown` (run from the repo root) submits every PDF to the MinerU v4 API (model `vlm`, OCR on) in one batch. It takes several files or folders (searched recursively). Run it in the background; it waits up to `--timeout` seconds (default 3600; raise it for big scanned papers). The output layout is the same. A paper OCR'd in the MinerU desktop or web app instead: unzip its export into `markdown/<paperID>/` and run `python3 scripts/mineru_cloud.py markdown/<paperID> --tidy` to rename the UUID-prefixed files and write the slim content list.
 
 Both write, per paper:
 
@@ -94,7 +94,7 @@ Both write, per paper:
 - `<paperID>_content_list.slim.json` — **source of truth for structure**: per-block `type`, `bbox`, `page_idx`, `table_caption`, `table_footnote`, and (for table blocks) `has_table_body`. Use this for captions, page mapping, and bbox crops. `table_body` is stripped from this file — it's a byte-for-byte duplicate of what's already in `full.md` (routinely >95% of the raw file's size) — so **read the `.slim.json`, never the full `<paperID>_content_list.json`**, for structure. The full (non-slim) file still exists on disk if a slim-file bug ever needs cross-checking, but should not be the default read.
 - `images/`, `layout.json`, `<paperID>_origin.pdf` — page renders and layout data for the validation crops. (`mineru_cloud.py` renames the cloud's UUID-prefixed files to the paper stem; `hpc/ocr/ocr.py` writes the same names directly.)
 
-**Cloud token** (fallback only): resolved from `--token`, then `$MINERU_API_TOKEN`, then the desktop client's `config.json` (`C:/Users/Marco/MinerU/config.json`, field `state.client_api_token`). Free tier: 2000 pages/day at top priority (more at reduced priority), 10,000 files/day. Data egress is fine — these are published papers.
+**Cloud token** (fallback only): resolved from `--token`, then `$MINERU_API_TOKEN`, then the desktop client's `config.json` (`--config`, else `$MINERU_CONFIG`, else `/mnt/c/Users/Marco/MinerU/config.json`; field `state.client_api_token`). Free tier: 2000 pages/day at top priority (more at reduced priority), 10,000 files/day. Data egress is fine — these are published papers.
 
 **Known gotcha**: on a multi-page table, continuation pages register a caption block but often have `has_table_body: false` (or the key absent) in `content_list.slim.json` — the body is only in `full.md`. Always reconcile the two; never trust `content_list.slim.json` alone for row counts.
 
@@ -118,17 +118,17 @@ The extraction rules (anti-fabrication, uncertainty, parity, units) live only in
 ### Step 4: Merge
 
 ```bash
-python scripts/csv_to_marvel.py merge <mol> <paperID>
+python3 scripts/csv_to_marvel.py merge <mol> <paperID>
 ```
 
-Merges all `<paperID>_batch*.csv` files into `<paperID>_merged.csv` in the same `csv/` directory. Errors if batch files are missing or have mismatched column headers.
+Merges all `<paperID>_batch*.csv` files into `<paperID>_merged.csv` in the same `csv/` directory. Errors if batch files are missing or have mismatched column headers. Row counts for a whole molecule: `python3 scripts/csv_to_marvel.py count <mol>` (reads past the `#` provenance lines that trip a plain `csv.DictReader`).
 
 ---
 
 ### Step 5: Split Unresolved Parity Pairs (script, mechanical, electronic-transition papers only)
 
 ```bash
-python scripts/csv_to_marvel.py split-parity <mol> <paperID>
+python3 scripts/csv_to_marvel.py split-parity <mol> <paperID>
 ```
 
 Extraction never duplicates rows itself (Parity rule, `extractor.md`) — when a paper doesn't resolve which e/f parity component was measured for a state, the extractor leaves `ef_upper`/`ef_lower` blank and tags `notes` with `parity: unresolved`. This step scans `<paperID>_merged.csv` for that token (molecule-obliviously — it just looks for `ef_upper`/`ef_lower` columns and the token, no per-molecule logic) and, for each tagged row: sets that row's own `ef_upper`/`ef_lower` to `e` in place (same ID, no renumbering), and appends **one** new row at the tail of that isotopologue's ID block with `ef_upper`/`ef_lower` set to `f` and the identical wavenumber/uncertainty/other QNs. Only the new `f` row gets a fresh ID (append-only, no gaps, safe to rerun). The original row's `notes` gets marked consumed (`parity: unresolved (split -> .510)`) and the new row cross-references it (`parity-split: sibling of <original id>`), so rerunning is a no-op on already-split rows. No-op entirely for papers without the token (i.e. every non-electronic-transition paper).
@@ -138,7 +138,7 @@ Extraction never duplicates rows itself (Parity rule, `extractor.md`) — when a
 ### Step 6: Validate (script, mechanical)
 
 ```bash
-python scripts/csv_to_marvel.py validate <mol> <paperID>
+python3 scripts/csv_to_marvel.py validate <mol> <paperID>
 ```
 
 Runs every check that's pure logic against `<paperID>_merged.csv` — no LLM judgment needed: ID format/sequencing, uncertainty non-blank/positive, wavenumber positivity, generic QN arithmetic validity (J/v ≥ 0, K ≤ J, |l#| ≤ v#), isotopologue-label counts, UNREADABLE inventory, and cross-batch duplicates (same wavenumber ±0.002 cm⁻¹ + same QNs/iso, different ID). Prints a report; fixes nothing. Run this **before** spawning the reviewer sub-agent — it exists so the sub-agent doesn't re-derive mechanical checks by hand every time.
@@ -171,7 +171,7 @@ If two independent passes disagree on a single value (a digit, a symmetry label,
 ### Step 8: Reconcile Units (script, mechanical)
 
 ```bash
-python scripts/csv_to_marvel.py reconcile <mol> <paperID>
+python3 scripts/csv_to_marvel.py reconcile <mol> <paperID>
 ```
 
 Extraction never converts units (Unit rule, `extractor.md`) — a row's uncertainty is sometimes stated in a different native unit than its wavenumber (e.g. a global fit-uncertainty quoted in kHz for an MHz transition table). This step is the one place a conversion happens: it scans each row's `notes` for `unit:` mentions — the first is always the wavenumber's unit, any later *different* one is the uncertainty's unit — and converts the uncertainty into the wavenumber's unit, appending `unit-reconciled: <old> <unit> -> <new> <unit>` to `notes` so the conversion stays auditable. No-op for rows where both columns already share a unit. Currently handles `Hz`/`kHz`/`MHz`/`GHz`; extend `FREQ_TO_HZ` in `csv_to_marvel.py` if a paper needs another unit pair.
@@ -181,7 +181,7 @@ Extraction never converts units (Unit rule, `extractor.md`) — a row's uncertai
 ### Step 9: Format
 
 ```bash
-python scripts/csv_to_marvel.py format <mol> <paperID>
+python3 scripts/csv_to_marvel.py format <mol> <paperID>
 ```
 
 Reads `<paperID>_merged.csv`, splits by `iso` column, and writes one MARVEL `.txt` file per isotopologue to `molecules/<mol>/output/`. Drops the `iso` and `notes` columns; all other columns are written tab-separated with a header row.
@@ -192,6 +192,22 @@ This `output/*.txt` file (tab-separated, header row, `2*NQN+3` columns: wavenumb
 
 ### Step 10: MARVEL4.1.x input conversion (script, mechanical — only when running the real binary)
 
+**The binary, in brief** (checked against `MARVEL4.1.cpp`, 2026-10-09):
+- Binary: `/mnt/c/Code/versions_MARVEL/Marvel4.1.x/Marvel4.1.x`. Source:
+  `/mnt/c/Code/MARVEL_GNN/Source_Code_CPP/MARVEL4.1.cpp` (segment parsing around line 380).
+- Segment units it knows: `cm-1`, `Hz`, `kHz`, `MHz`, `GHz`, `THz`, case-sensitive. **Any other
+  string (`mhz`, `cm^-1`) is silently read as cm-1.**
+- `sh: pause: not found` is not harmless: the binary calls `system("pause")` right before a fatal
+  `exit(-1)`. The line above it says which: `Missing segment: <source>` (a source tag with no
+  segment line), or ` wrong decomp 1` (see the minsize gotcha below).
+- With `-b`, a failed bootstrap decomposition on tiny tree components inflates line
+  uncertainties at random (1-10x), so flagged lines change from run to run (19 vs 112 on the same
+  input). `marvel_steps.py` uses `-b` only in `final` mode and raises `--minsize` until no
+  decomposition fails.
+- Results: N2O networks in `molecules/N2O/network/<iso>/final/`, with deliverables in
+  `molecules/N2O/reference_papers/N2O_MARVEL4_round2_20261006/`. SO in `molecules/SO/marvel4_results/`.
+  Record a new molecule's results folder in the state file.
+
 **Unit check first.** Before any MARVEL4 run, `python3 scripts/unit_check.py <trans> <segment>
 [--levels <earlier EnergyLevels.txt>]` must exit 0. It flags a source whose values are ~1000x off
 other sources on shared transitions, or off the reference level differences: a kHz source
@@ -201,7 +217,7 @@ check on every load (with `network/<iso>/final/EnergyLevels.txt`) and stops; a r
 in `overrides.tsv` as `unit-ok <SRC> <reason>`.
 
 ```bash
-python scripts/to_marvel4_input.py molecules/<mol>/output/<file>.txt -o <out>.txt
+python3 scripts/to_marvel4_input.py molecules/<mol>/output/<file>.txt -o <out>.txt
 ```
 
 Verified 2026-09 while running SO 34S16O through `C:\Code\versions_MARVEL\Marvel4.1.x`: the compiled MARVEL4.1.x binary parses transitions-file lines **positionally** (`Source_Code_CPP/MARVEL4.1.cpp` ~line 340-372) and requires `2*NQN + 4` whitespace-delimited columns — `wavenumber, uncorig, unc, <NQN upper>, <NQN lower>, id` — not this pipeline's own `2*NQN + 3` canonical format (a single `uncertainty` column, no separate `uncorig`). Confirmed against `molecules/SO/reference_papers/32S-16O_MARVEL_trans.txt`, Brady et al. (2024)'s real, working MARVEL4.1 input for 32S16O, which has the full 14 columns for their NQN=5 electronic-transition schema. Without the extra column, MARVEL4.1.x reads its ID field out of bounds and crashes or silently corrupts. This is a systemic, molecule-oblivious gap — every file this pipeline ever formats for the MARVEL4.1.x binary needs this step, not just SO.

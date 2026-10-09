@@ -7,8 +7,8 @@ symmetry block, so the (P, l, N) labels are identical and only the energies chan
 Ames automatic HO labels are used only for the shift estimate and as a cross-check.
 
 Usage:
-    python scripts/n2o_states.py template <supp_info.txt> <out 446_template.tsv>
-    python scripts/n2o_states.py build <template.tsv> <ames_dir> <iso> <out.tsv>
+    python3 scripts/n2o_states.py template <supp_info.txt> <out 446_template.tsv>
+    python3 scripts/n2o_states.py build <template.tsv> <ames_dir> <iso> <out.tsv>
 """
 import re
 import sys

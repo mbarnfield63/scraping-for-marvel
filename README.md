@@ -72,7 +72,7 @@ cluster, waits, and saves the results into `markdown/`. It needs Hypatia SSH
 access (and the UCL VPN off campus). If the A100 queue is long, add
 `--gres=gpu:1 --nodelist=compute-gpu-0-5` to use the L40S instead. If Hypatia
 is unavailable, the MinerU cloud service takes the same arguments:
-`python scripts/mineru_cloud.py molecules/CS2/papers --out-dir molecules/CS2/markdown`.
+`python3 scripts/mineru_cloud.py molecules/CS2/papers --out-dir molecules/CS2/markdown`.
 Either way, each paper gets its own folder in `markdown/`. Each paper gets its own folder containing:
 - `full.md` — the paper's text and tables
 - `<paperID>_content_list.json` — where each table sits on the page
@@ -86,13 +86,13 @@ corrupts the result, so it never invents one.
 
 ### 4. Merge the pieces
 ```bash
-python scripts/csv_to_marvel.py merge CS2 74MaSa
+python3 scripts/csv_to_marvel.py merge CS2 74MaSa
 ```
 Combines the CSV pieces into one file.
 
 ### 5. Split unresolved parity pairs (electronic-transition papers only)
 ```bash
-python scripts/csv_to_marvel.py split-parity CS2 74MaSa
+python3 scripts/csv_to_marvel.py split-parity CS2 74MaSa
 ```
 Expands any row where the paper didn't resolve which e/f component was
 measured into a proper e/f pair. No-op for papers without electronic
@@ -100,7 +100,7 @@ transitions.
 
 ### 6. Mechanical validation
 ```bash
-python scripts/csv_to_marvel.py validate CS2 74MaSa
+python3 scripts/csv_to_marvel.py validate CS2 74MaSa
 ```
 Runs the pure-logic checks (ID format, uncertainty, wavenumber range, quantum
 numbers, duplicates, UNREADABLE inventory) and prints a report — fixes
@@ -115,14 +115,14 @@ continuing.
 
 ### 8. Reconcile units
 ```bash
-python scripts/csv_to_marvel.py reconcile CS2 74MaSa
+python3 scripts/csv_to_marvel.py reconcile CS2 74MaSa
 ```
 Converts any row whose uncertainty was stated in a different unit than its
 wavenumber into the wavenumber's unit, logging the conversion.
 
 ### 9. Write the MARVEL file
 ```bash
-python scripts/csv_to_marvel.py format CS2 74MaSa
+python3 scripts/csv_to_marvel.py format CS2 74MaSa
 ```
 Produces the final tab-separated `.txt` file(s) in `molecules/CS2/output/` —
 one per isotopologue. **These are your results.**

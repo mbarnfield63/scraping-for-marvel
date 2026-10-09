@@ -1,4 +1,4 @@
-"""Self-check for marvel_steps.load overrides: python scripts/test_marvel_steps.py"""
+"""Self-check for marvel_steps.load overrides: python3 scripts/test_marvel_steps.py"""
 import sys, tempfile
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))

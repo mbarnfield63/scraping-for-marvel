@@ -28,6 +28,7 @@ docs/*
 .scratch/
 
 # Claude Code local/session state
-.claude/
-.claude/scheduled_tasks.lock
+.claude/*
+!.claude/skills/
+!.claude/agents/
 graphify-out/

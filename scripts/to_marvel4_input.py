@@ -35,7 +35,7 @@ MARVEL4.1's re-weighting -- see MARVEL4.1.cpp line ~484) equal to the one real
 number this pipeline ever had for that line.
 
 Usage:
-    python scripts/to_marvel4_input.py <input.txt> [-o OUTPUT] [--nqn NQN]
+    python3 scripts/to_marvel4_input.py <input.txt> [-o OUTPUT] [--nqn NQN]
 
     <input.txt> may be:
       - a canonical per-source file from molecules/<mol>/output/*.txt
@@ -53,10 +53,10 @@ Usage:
     (must be odd: wavenumber + uncertainty + 2*NQN + id = 2*NQN+3).
 
 Examples:
-    python scripts/to_marvel4_input.py molecules/SO/combined/SO_34S16O_combined.txt \\
+    python3 scripts/to_marvel4_input.py molecules/SO/combined/SO_34S16O_combined.txt \\
         -o .scratch/so-34s16o-marvel/attempt1/SO_34S16O_trans_marvel4.txt
 
-    python scripts/to_marvel4_input.py molecules/SO/output/SO_32S16O_03KiYa_SO_*.txt \\
+    python3 scripts/to_marvel4_input.py molecules/SO/output/SO_32S16O_03KiYa_SO_*.txt \\
         -o /tmp/03KiYa_marvel4.txt
 """
 

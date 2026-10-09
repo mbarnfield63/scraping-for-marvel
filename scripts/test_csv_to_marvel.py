@@ -54,4 +54,6 @@ outs = sorted((c.BASE / "XY" / "output").glob("*.txt"))
 assert [p.name.split("_")[1] for p in outs] == ["32S16O", "34S16O"], outs
 lines = outs[0].read_text().splitlines()
 assert lines[0].split("\t")[-1] == "id" and "notes" not in lines[0] and len(lines) == 4
+out = run(c.count, "XY")
+assert "26AbCd" in out and "32S16O 3" in out and "= 4 rows" in out, out
 print("ok")
