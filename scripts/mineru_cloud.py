@@ -149,7 +149,7 @@ def write_slim_content_list(content_list_path):
 def collect_pdfs(target):
     t = Path(target)
     if t.is_dir():
-        return sorted(t.glob("*.pdf"))
+        return sorted(t.rglob("*.pdf"))  # papers/ has one subfolder per isotopologue
     if t.suffix.lower() == ".pdf":
         return [t]
     sys.exit(f"not a PDF or directory: {target}")

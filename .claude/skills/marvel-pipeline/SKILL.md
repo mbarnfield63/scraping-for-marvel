@@ -47,11 +47,24 @@ Accuracy comes first, then usage budget, then running unattended, then speed.
 
 ---
 
+### Step 0: Papers come from the literature review
+
+The list of papers to extract is `/mnt/c/Code/MARVEL_literature/<mol>/<mol>_handoff.tsv`: the
+rows with `status: have` are on disk, and `key` is the paperID used everywhere below. If there is
+no hand-off file, run `/marvel-lit-review <mol> ...` first; the skill is linked into this repo.
+To fetch missing papers, see `<mol>/<mol>_missing.md` in the same folder. After adding PDFs, re-run
+`python3 crawler.py table <mol>` there to refresh `status`.
+
 ### Step 1: Set Up Molecule Directory
 
 ```bash
 mkdir -p molecules/<mol>/papers molecules/<mol>/reference_papers molecules/<mol>/markdown molecules/<mol>/csv molecules/<mol>/reviews molecules/<mol>/output
 ```
+
+`papers/` has one subfolder per isotopologue (AFGL code such as `46/`, else the isotopologue key)
+plus `multiple/`, as the hand-off's `folder` column gives. Files are named `<key>.pdf` and
+`<key>_<anything>` (supplements, `.xml`/`.txt` full text). `markdown/<key>/` stays flat. Both OCR
+tools search `papers/` recursively.
 
 Place source PDFs (and supplementary files, if any) in `papers/`. If a paper's transitions live only in an online supplement, add the supplement to `papers/` — the OCR stage handles the main PDF, but supplementary data files are often clean text/CSV that can be parsed directly without OCR.
 

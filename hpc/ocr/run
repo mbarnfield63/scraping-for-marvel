@@ -24,7 +24,8 @@ while [ $# -gt 0 ]; do
 done
 [ -n "$out" ] || { echo "--out-dir is required" >&2; exit 1; }
 
-if [ -d "$target" ]; then pdfs=("$target"/*.pdf); else pdfs=("$target"); fi
+shopt -s globstar  # papers/ has one subfolder per isotopologue
+if [ -d "$target" ]; then pdfs=("$target"/**/*.pdf); else pdfs=("$target"); fi
 [ -f "${pdfs[0]}" ] || { echo "no PDFs at $target" >&2; exit 1; }
 
 # /home on Hypatia is shared and often near full; a job that runs out mid-write wastes the queue wait.
