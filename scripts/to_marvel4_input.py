@@ -13,7 +13,7 @@ line positionally (Source_Code_CPP/MARVEL4.1.cpp, ~line 340-372):
     tokens[2*NQN+3]           -> Ref/ID
 
 i.e. it wants **2*NQN + 4** whitespace-delimited columns. This pipeline's own
-canonical format (CLAUDE.md "MARVEL Input Format", csv_to_marvel.py `format`,
+canonical format (`.claude/skills/marvel-pipeline/format.md`, csv_to_marvel.py `format`,
 and every real file under molecules/<mol>/output/*.txt) only ever produces
 **2*NQN + 3** columns: a single `uncertainty` column, no separate `uncorig`.
 Confirmed against molecules/SO/reference_papers/32S-16O_MARVEL_trans.txt (Brady et al. 2024's

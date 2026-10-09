@@ -103,7 +103,7 @@ def row_J(row, spec):
 
 
 def parities(ef_u, ef_l, l_u, l_l, br):
-    """e/f rules (CLAUDE.md N2O section). Returns list of (ef_u, ef_l) pairs and a note."""
+    """e/f rules (marvel-pipeline format.md, N2O section). Returns list of (ef_u, ef_l) pairs and a note."""
     if ef_u != "auto" and ef_l != "auto":
         return [(ef_u, ef_l)], ""
     flip = {"e": "f", "f": "e"}

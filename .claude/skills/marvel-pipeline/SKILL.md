@@ -72,7 +72,7 @@ tools search `papers/` recursively.
 
 Place source PDFs (and supplementary files, if any) in `papers/`. If a paper's transitions live only in an online supplement, add the supplement to `papers/` — the OCR stage handles the main PDF, but supplementary data files are often clean text/CSV that can be parsed directly without OCR.
 
-Put lookup-only material in `reference_papers/`, not `papers/`: prior MARVEL compilations for the molecule (`*_MARVEL_trans.txt`/`*_states.txt`), line-list/method papers, notation guides. Extractor and reviewer consult it to decipher a source paper's QN labelling or cross-check values against previous works; it is never OCR'd or extracted. Only `papers/` is pipeline input.
+Put lookup-only material in `reference_papers/`, not `papers/`: prior MARVEL compilations for the molecule (`*_MARVEL_trans.txt`/`*_states.txt`), line-list/method papers, notation guides. Extractor and reviewer consult it to decipher a source paper's QN labelling or cross-check values against previous works; it is never OCR'd or extracted. Only `papers/` is pipeline input. Final MARVEL4 deliverables for a molecule are kept here too.
 
 ---
 
@@ -106,12 +106,12 @@ Spawn the `marvel-extractor` sub-agent (`.claude/agents/extractor.md`) per paper
 
 1. Reads `markdown/<paperID>/full.md` and `<paperID>_content_list.slim.json` (not the full, non-slim `content_list.json` — see Step 2), including the Experimental section for stated measurement uncertainty and band assignments.
 2. **Validates before extracting.** MinerU (self-hosted or cloud) is strong but not infallible on hard scans; the extractor brief lists each one's known failure modes (doublet merges, repetition loops, dropped cells). For any cell that looks off — broken monotonicity in a branch, a header-span flattened into left-packed cells, a suspiciously short row — it crops the table's `bbox` from the page image and reads the value visually. Fixes obvious OCR errors (header-span misalignment, decimal punctuation) against the crop. Where the crop is genuinely illegible, marks the cell **UNREADABLE** — never guesses a digit.
-3. Applies quantum-number assignments, the paper's uncertainty, and band/isotopologue labels to parse the HTML tables into the correct CSV column structure (see MARVEL Input Format in CLAUDE.md).
+3. Applies quantum-number assignments, the paper's uncertainty, and band/isotopologue labels to parse the HTML tables into the correct CSV column structure (see `format.md` next to this skill).
 4. Emits batch CSVs to `molecules/<mol>/csv/<paperID>_batch<N>.csv`, columns:
    `transition_wavenumber, uncertainty, <QN columns>, id, iso, notes`
    Using `notes` to record table/band/branch provenance and any OCR fix or UNREADABLE flag.
 
-The **anti-fabrication**, **uncertainty**, and **unit** rules for this step live in the root `CLAUDE.md` ("Extraction Rules") and are mirrored in `extractor.md` — always apply them.
+The extraction rules (anti-fabrication, uncertainty, parity, units) live only in `.claude/agents/extractor.md`; column schemes and ID rules in `format.md` next to this skill.
 
 ---
 
@@ -131,7 +131,7 @@ Merges all `<paperID>_batch*.csv` files into `<paperID>_merged.csv` in the same 
 python scripts/csv_to_marvel.py split-parity <mol> <paperID>
 ```
 
-Extraction never duplicates rows itself (Parity rule, CLAUDE.md) — when a paper doesn't resolve which e/f parity component was measured for a state, the extractor leaves `ef_upper`/`ef_lower` blank and tags `notes` with `parity: unresolved`. This step scans `<paperID>_merged.csv` for that token (molecule-obliviously — it just looks for `ef_upper`/`ef_lower` columns and the token, no per-molecule logic) and, for each tagged row: sets that row's own `ef_upper`/`ef_lower` to `e` in place (same ID, no renumbering), and appends **one** new row at the tail of that isotopologue's ID block with `ef_upper`/`ef_lower` set to `f` and the identical wavenumber/uncertainty/other QNs. Only the new `f` row gets a fresh ID (append-only, no gaps, safe to rerun). The original row's `notes` gets marked consumed (`parity: unresolved (split -> .510)`) and the new row cross-references it (`parity-split: sibling of <original id>`), so rerunning is a no-op on already-split rows. No-op entirely for papers without the token (i.e. every non-electronic-transition paper).
+Extraction never duplicates rows itself (Parity rule, `extractor.md`) — when a paper doesn't resolve which e/f parity component was measured for a state, the extractor leaves `ef_upper`/`ef_lower` blank and tags `notes` with `parity: unresolved`. This step scans `<paperID>_merged.csv` for that token (molecule-obliviously — it just looks for `ef_upper`/`ef_lower` columns and the token, no per-molecule logic) and, for each tagged row: sets that row's own `ef_upper`/`ef_lower` to `e` in place (same ID, no renumbering), and appends **one** new row at the tail of that isotopologue's ID block with `ef_upper`/`ef_lower` set to `f` and the identical wavenumber/uncertainty/other QNs. Only the new `f` row gets a fresh ID (append-only, no gaps, safe to rerun). The original row's `notes` gets marked consumed (`parity: unresolved (split -> .510)`) and the new row cross-references it (`parity-split: sibling of <original id>`), so rerunning is a no-op on already-split rows. No-op entirely for papers without the token (i.e. every non-electronic-transition paper).
 
 ---
 
@@ -174,7 +174,7 @@ If two independent passes disagree on a single value (a digit, a symmetry label,
 python scripts/csv_to_marvel.py reconcile <mol> <paperID>
 ```
 
-Extraction never converts units (Unit rule, CLAUDE.md) — a row's uncertainty is sometimes stated in a different native unit than its wavenumber (e.g. a global fit-uncertainty quoted in kHz for an MHz transition table). This step is the one place a conversion happens: it scans each row's `notes` for `unit:` mentions — the first is always the wavenumber's unit, any later *different* one is the uncertainty's unit — and converts the uncertainty into the wavenumber's unit, appending `unit-reconciled: <old> <unit> -> <new> <unit>` to `notes` so the conversion stays auditable. No-op for rows where both columns already share a unit. Currently handles `Hz`/`kHz`/`MHz`/`GHz`; extend `FREQ_TO_HZ` in `csv_to_marvel.py` if a paper needs another unit pair.
+Extraction never converts units (Unit rule, `extractor.md`) — a row's uncertainty is sometimes stated in a different native unit than its wavenumber (e.g. a global fit-uncertainty quoted in kHz for an MHz transition table). This step is the one place a conversion happens: it scans each row's `notes` for `unit:` mentions — the first is always the wavenumber's unit, any later *different* one is the uncertainty's unit — and converts the uncertainty into the wavenumber's unit, appending `unit-reconciled: <old> <unit> -> <new> <unit>` to `notes` so the conversion stays auditable. No-op for rows where both columns already share a unit. Currently handles `Hz`/`kHz`/`MHz`/`GHz`; extend `FREQ_TO_HZ` in `csv_to_marvel.py` if a paper needs another unit pair.
 
 ---
 

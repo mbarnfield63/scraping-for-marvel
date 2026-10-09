@@ -37,7 +37,7 @@ Expected count: [EXPECTED — transitions expected in this batch, per isotopolog
     degenerate), leave ef_* blank AND add "parity: unresolved" to notes — a later
     mechanical pipeline step (csv_to_marvel.py split-parity) expands that row into
     an e/f pair automatically. Never derive e/f from J-value parity or branch type
-    yourself — see CLAUDE.md's Parity (e/f) rule.)]
+    yourself — see the Parity (e/f) rule in .claude/agents/extractor.md.)]
   Diatomic with hyperfine structure: v_upper, J_upper, F_upper, v_lower, J_lower, F_lower
     (F_* is the nuclear hyperfine quantum number, NOT the electronic fine-structure
     F above — different physical quantity, same column name. Only use this scheme

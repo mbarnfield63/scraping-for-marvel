@@ -9,7 +9,7 @@ Commands:
                                   labels, UNREADABLE inventory, cross-batch duplicates).
                                   Prints a report; fixes nothing. Run before the reviewer agent.
     split-parity <mol> <paper_id> Expand rows tagged "parity: unresolved" in notes (electronic-
-                                  transition papers only, see CLAUDE.md Parity rule) into an e/f
+                                  transition papers only, see extractor.md Parity rule) into an e/f
                                   pair: the original row becomes the "e" copy in place (same ID),
                                   and one new "f" copy is appended at the tail of that isotopologue's
                                   ID block. No-op for papers without ef_upper/ef_lower columns, and
@@ -19,7 +19,7 @@ Commands:
                                   native unit than its wavenumber (flagged in notes as
                                   "unit: X, differs from wavenumber's Y") into the wavenumber's
                                   unit, logging the conversion in notes. Run after the reviewer,
-                                  before format -- extraction never converts units (see CLAUDE.md
+                                  before format -- extraction never converts units (see extractor.md
                                   Unit rule); this is the one place a conversion is allowed.
     format   <mol> <paper_id>   Split merged CSV by isotopologue
                                   -> molecules/<mol>/output/<mol>_<iso>_<paper_id>_YYYYMMDD_HHMMSS.txt

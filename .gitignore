@@ -19,7 +19,10 @@ molecules/*
 
 # Files
 archive/
-docs/
+# docs/: only the ADRs and agent docs that CLAUDE.md and the skills point at are tracked
+docs/*
+!docs/adr/
+!docs/agents/
 
 # Local scratch space (crops, debug scripts, issue-tracker notes) - not versioned
 .scratch/
