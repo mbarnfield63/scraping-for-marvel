@@ -36,6 +36,8 @@ overrides.tsv (tab-separated, header: action target value reason; '#' lines igno
                                         <unit> is the segment unit of their source tags
   unit        <SRC>  <unit>             segment unit for a source not in the segment file
   exclude     <SRC>  -                  leave the source out
+  unit-ok     <SRC>  -                  the source passes the unit check (scripts/unit_check.py),
+                                        which otherwise stops a run on a ~1000x unit mismatch
 
 Bootstrap (-b) is used only in final mode: in Marvel4.1.x a failed bootstrap decomposition
 (tiny tree components) leaves line uncertainties randomly inflated 1-10x, so flags become random.
@@ -46,11 +48,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from n2o_apply import AmesTracker, ROOT  # noqa: E402
+from unit_check import TO_CM, load_levels, suspicious  # noqa: E402
 
 BIN = "/mnt/c/Code/versions_MARVEL/Marvel4.1.x/Marvel4.1.x"
 NQN = 5
-TO_CM = {"cm-1": 1.0, "Hz": 1 / 2.99792458e10, "kHz": 1e3 / 2.99792458e10,
-         "MHz": 1e6 / 2.99792458e10, "GHz": 1e9 / 2.99792458e10, "THz": 1e12 / 2.99792458e10}
 OUTPUTS = ["EnergyLevels.txt", "Components.txt", "CheckTransitions.txt", "BadLines.txt", "AVTable.txt", "reviveTRs.txt"]
 GROUND = "0 0 1 e 0"
 
@@ -185,6 +186,13 @@ def load(iso, ov=None, xdir=None):
     for s in {src(t) for t in lines} - set(seg):
         print(f"WARNING: no segment unit for {s}, using cm-1")
         seg[s] = "cm-1"
+    # a kHz source declared MHz cost ~6 runs (78ReMeDy); stop here instead of flagging 14k lines
+    ok = {tgt for act, tgt, _, _ in rules if act == "unit-ok"}
+    ref = ROOT / "network" / iso / "final" / "EnergyLevels.txt"
+    bad = {s: r for s, r in suspicious(lines, seg, load_levels(ref, NQN) if ref.exists() else None).items() if s not in ok}
+    if bad:
+        sys.exit("".join(f"UNIT? {s}: declared {seg[s]}, values are {r:.3g}x other sources or reference levels\n"
+                         for s, r in sorted(bad.items())) + "Fix the segment unit, or add `unit-ok <SRC> <reason>` to overrides.tsv.")
     return lines, seg, held
 
 

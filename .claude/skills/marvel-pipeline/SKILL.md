@@ -38,6 +38,10 @@ Accuracy comes first, then usage budget, then running unattended, then speed.
   without asking. Stop only when the user says pause.
 - **Done marker.** The extractor writes `csv/<paperID>.done` as its last action. `merge` refuses
   a paper without one. An ad-hoc agent's brief names its own done marker, written last.
+- **Briefs point at files, never restate them.** Isotopologue codes come from
+  `MARVEL_literature/<mol>/aliases.json`; QN labels, energy formulas and band maps come from the
+  states files and plan docs (`polyad_plan.md`). Briefs written from memory swapped N atoms in
+  three sessions and carried a wrong energy formula.
 - **Status:** `python3 scripts/batch_status.py <mol> [paperID ...]` prints
   `done N/M · todo: <paperIDs>` (default set: every folder under `markdown/`).
 - **Resume** (after a usage-limit hit, or when the user says `continue`): run the status script.
@@ -187,6 +191,14 @@ This `output/*.txt` file (tab-separated, header row, `2*NQN+3` columns: wavenumb
 ---
 
 ### Step 10: MARVEL4.1.x input conversion (script, mechanical — only when running the real binary)
+
+**Unit check first.** Before any MARVEL4 run, `python3 scripts/unit_check.py <trans> <segment>
+[--levels <earlier EnergyLevels.txt>]` must exit 0. It flags a source whose values are ~1000x off
+other sources on shared transitions, or off the reference level differences: a kHz source
+declared MHz (78ReMeDy) cost ~6 runs. Pass `--levels` whenever an earlier run exists; a lone
+microwave source shares no transitions, and only the levels catch it. `marvel_steps.py` runs the
+check on every load (with `network/<iso>/final/EnergyLevels.txt`) and stops; a real exception goes
+in `overrides.tsv` as `unit-ok <SRC> <reason>`.
 
 ```bash
 python scripts/to_marvel4_input.py molecules/<mol>/output/<file>.txt -o <out>.txt
