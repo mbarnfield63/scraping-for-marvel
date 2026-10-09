@@ -47,6 +47,10 @@ def merge(mol: str, paper_id: str) -> None:
     batches = sorted(csv_dir.glob(f"{paper_id}_batch*.csv"))
     if not batches:
         raise SystemExit(f"No batch CSVs found for {paper_id} in {csv_dir}")
+    # the extractor writes <paper_id>.done last; without it the batch set may be from a dead agent
+    if not (csv_dir / f"{paper_id}.done").exists():
+        raise SystemExit(f"{paper_id}: no csv/{paper_id}.done, so extraction may be partial. "
+                         f"If you know it is complete: touch {csv_dir / (paper_id + '.done')}")
 
     header = None
     rows = []

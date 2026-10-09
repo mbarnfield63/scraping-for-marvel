@@ -18,6 +18,8 @@ When reaching a milestone or when the user says **"save state"**, invoke the `sa
 ### 3. Never delete untracked files outside your own run
 Never delete, move-as-cleanup, or overwrite an untracked file in this repo unless it was created by the current agent/session's own run (e.g. a temp file you just wrote to your own scratchpad). Untracked files (`git status`) are frequently in-progress user work, not junk — `git` gives no recovery path for them if deleted. This applies even to "obviously superfluous"-looking files (stray `.txt`/`.json` scratch files at the repo root, etc.) and even when doing routine cleanup. If a file looks like leftover clutter and you did not create it in this run, leave it alone or ask the user before touching it.
 
+One exception: when resuming an extraction fan-out, move an unfinished paper's (no `csv/<paperID>.done`) `csv/<paperID>_batch*.csv` into `csv/partial/<YYYYMMDD_HHMMSS>/` before relaunching its extractor. Move, never delete (see `marvel-pipeline` skill, Fan-out).
+
 ### 4. Obsidian State File Format
 When writing to `C:/Code/Obsidian/PhD/MARVEL scraping/MARVEL scraping_state.md`, always overwrite with:
 

@@ -25,6 +25,28 @@ Self-hosted OCR on Hypatia, cloud as fallback: see `docs/adr/0013-self-hosted-oc
 
 ---
 
+### Fan-out (several papers or isotopologues at once)
+
+Accuracy comes first, then usage budget, then running unattended, then speed.
+
+- **Models.** `marvel-extractor` and `marvel-reviewer` are pinned to Opus in their frontmatter.
+  Launch ad-hoc `general-purpose` agents that write data or make assignments (N2O polyad
+  mapping, MARVEL4 runs and diagnosis) with `model: opus`. The extractor stays on Opus until a
+  Sonnet pilot comes back clean: re-extract 2 papers Opus already extracted and diff the CSVs.
+- **Waves of at most 5 agents.** Total usage is the same at any wave size; the wave size caps how
+  much in-flight work a usage-limit hit throws away. When a wave finishes, launch the next
+  without asking. Stop only when the user says pause.
+- **Done marker.** The extractor writes `csv/<paperID>.done` as its last action. `merge` refuses
+  a paper without one. An ad-hoc agent's brief names its own done marker, written last.
+- **Status:** `python3 scripts/batch_status.py <mol> [paperID ...]` prints
+  `done N/M · todo: <paperIDs>` (default set: every folder under `markdown/`).
+- **Resume** (after a usage-limit hit, or when the user says `continue`): run the status script.
+  For each `todo` paper, move any `csv/<paperID>_batch*.csv` into
+  `csv/partial/<YYYYMMDD_HHMMSS>/` (the CLAUDE.md rule 3 exception; never delete), then launch
+  fresh extractors in waves of 5. Never SendMessage a dead agent.
+
+---
+
 ### Step 1: Set Up Molecule Directory
 
 ```bash
