@@ -5,6 +5,7 @@ set -e
 cd "$(git rev-parse --show-toplevel)"
 python3 -m py_compile scripts/*.py hpc/ocr/ocr.py
 python3 scripts/unit_check.py --selftest
+python3 scripts/ocr_diff.py --selftest
 python3 scripts/test_csv_to_marvel.py
 if [ -d molecules/N2O/marvel4_input ]; then
     python3 scripts/test_marvel_steps.py
