@@ -23,6 +23,9 @@ export MINERU_MODEL_SMALL_BACKEND=torch
 export MINERU_MODEL_VLM_ENGINE=vllm
 # FlashInfer's sampler JIT-compiles with nvcc, which the container lacks; use vLLM's PyTorch sampler.
 export VLLM_USE_FLASHINFER_SAMPLER=0
+# Node /tmp sits on a small root disk (compute-gpu-0-5: 4.8 GB free); page renders filled it (job 1391096).
+export TMPDIR=$batch/tmp
+mkdir -p "$TMPDIR"
 
 # Hypatia's gres has no device mapping: every 1-GPU job gets CUDA_VISIBLE_DEVICES=0 and sees
 # all GPUs, which other jobs share. Take the one with the most free memory (MinerU's vLLM needs ~6 GB).
