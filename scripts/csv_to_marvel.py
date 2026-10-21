@@ -35,7 +35,7 @@ from datetime import datetime
 from pathlib import Path
 
 BASE = Path(__file__).parent.parent / "molecules"
-ID_RE = re.compile(r"^(\d{2}(?:[A-Za-z]{2}){1,3})\.(\d+)$")
+ID_RE = re.compile(r"^(\d{2}(?:[A-Za-z]{2}){1,3}[a-z]?)\.(\d+)$")  # trailing letter: hand-off disambiguator (99IsNaMib)
 NON_QN_COLS = ("transition_wavenumber", "uncertainty", "id", "iso", "notes")
 DUP_TOLERANCE = 0.002
 FREQ_TO_HZ = {"Hz": 1.0, "kHz": 1e3, "MHz": 1e6, "GHz": 1e9}

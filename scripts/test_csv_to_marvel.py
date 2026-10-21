@@ -56,4 +56,5 @@ lines = outs[0].read_text().splitlines()
 assert lines[0].split("\t")[-1] == "id" and "notes" not in lines[0] and len(lines) == 4
 out = run(c.count, "XY")
 assert "26AbCd" in out and "32S16O 3" in out and "= 4 rows" in out, out
+assert c.ID_RE.match("99IsNaMib.450") and not c.ID_RE.match("99IsNaMiBc.1")
 print("ok")

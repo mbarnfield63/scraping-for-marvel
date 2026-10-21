@@ -17,6 +17,15 @@ transition_wavenumber   uncertainty   v_upper   J_upper   v_lower   J_lower   ID
 transition_wavenumber   uncertainty   v1_upper   v2_upper   l2_upper   v3_upper   J_upper   v1_lower   v2_lower   l2_lower   v3_lower   J_lower   ID
 ```
 
+HCP adds rotationless parity after each `l2` (user decision 2026-10-21):
+```
+transition_wavenumber   uncertainty   v1_upper   v2_upper   l2_upper   ef_upper   v3_upper   J_upper   v1_lower   v2_lower   l2_lower   ef_lower   v3_lower   J_lower   ID
+```
+`ef` comes from a printed label, else l=0 → e, else the dipole rule from the other side (P/R keep
+e/f, Q flips), logged in `notes`. Rows still blank with l>0 carry `REQUIRES MANUAL REVIEW: ef_<side>
+unresolved`, never `parity: unresolved` (`split-parity` would add a wrong second row). Bent-state
+rows (99IsNaMib, 96IsChOh C̃–X̃, 93MaLe) are formatted into `output/bent/`, apart from the linear network files.
+
 ### Asymmetric tops (e.g. H₂O)
 ```
 transition_wavenumber   uncertainty   v1_upper   v2_upper   v3_upper   J_upper   Ka_upper   Kc_upper   v1_lower   v2_lower   v3_lower   J_lower   Ka_lower   Kc_lower   ID
