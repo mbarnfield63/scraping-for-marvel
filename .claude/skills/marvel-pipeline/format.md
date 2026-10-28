@@ -118,7 +118,7 @@ Full plan, decisions and the per-paper brief: `molecules/N2O/polyad_plan.md`.
 ## Paper IDs and line IDs
 
 The paper ID is the paper's `key` in `MARVEL_literature/<mol>/<mol>_handoff.tsv`: a published
-MARVEL/ExoMol tag if one exists, else `YY` (print year) + the first two letters of up to three
+MARVEL/ExoMol tag if one exists, else `YY` (print year) + the first two letters of up to four
 surnames. Use it as given; don't derive it again. Line IDs are `<paperID>.N`, with `N` starting at 1
 and **restarting at 1 for each isotopologue** within the paper.
 
