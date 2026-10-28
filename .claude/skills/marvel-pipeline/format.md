@@ -31,6 +31,14 @@ rows (99IsNaMib, 96IsChOh C̃–X̃, 93MaLe) are formatted into `output/bent/`, 
 transition_wavenumber   uncertainty   v1_upper   v2_upper   v3_upper   J_upper   Ka_upper   Kc_upper   v1_lower   v2_lower   v3_lower   J_lower   Ka_lower   Kc_lower   ID
 ```
 
+### C2H4: 12 normal modes + J Ka Kc
+```
+transition_wavenumber   uncertainty   v1_upper ... v12_upper   J_upper   Ka_upper   Kc_upper   v1_lower ... v12_lower   J_lower   Ka_lower   Kc_lower   ID
+```
+Mode numbering ν1..ν12 as in Herzberg and TheoReTS (ν7 ≈ 949, ν8 ≈ 943, ν10 ≈ 826, ν12 ≈ 1443
+cm-1). Papers labelled in tensorial (J, C, n) / (J, C, α) go through `scripts/c2h4_labels.py`,
+not the extractor. The converted files are in `molecules/C2H4/convert/`.
+
 ### Diatomics with electronic transitions (e.g. SO bands crossing electronic states)
 ```
 transition_wavenumber   uncertainty   state_upper   v_upper   J_upper   F_upper   ef_upper   state_lower   v_lower   J_lower   F_lower   ef_lower   ID
