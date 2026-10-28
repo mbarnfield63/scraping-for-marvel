@@ -36,8 +36,39 @@ transition_wavenumber   uncertainty   v1_upper   v2_upper   v3_upper   J_upper  
 transition_wavenumber   uncertainty   v1_upper ... v12_upper   J_upper   Ka_upper   Kc_upper   v1_lower ... v12_lower   J_lower   Ka_lower   Kc_lower   ID
 ```
 Mode numbering ν1..ν12 as in Herzberg and TheoReTS (ν7 ≈ 949, ν8 ≈ 943, ν10 ≈ 826, ν12 ≈ 1443
-cm-1). Papers labelled in tensorial (J, C, n) / (J, C, α) go through `scripts/c2h4_labels.py`,
-not the extractor. The converted files are in `molecules/C2H4/convert/`.
+cm-1). C2H4 v1 only: papers labelled in tensorial (J, C, n) / (J, C, α) went through
+`scripts/c2h4_labels.py` into `molecules/C2H4/convert/`. From v2 they take the copy path
+("Copied sources" below) and MARVEL_network converts them.
+
+## Copied sources
+
+Machine-readable sources (SKILL.md, "Copy path") are copied, not extracted, to
+`molecules/<mol>/copy/<tag>.tsv`:
+```
+src_file   src_row   <source columns, unchanged>
+```
+- `src_file`: the copied file's name in `papers/<folder>/`; for a spreadsheet, `<file>:<sheet>`.
+- `src_row`: the 1-based line number in that file (spreadsheet: the sheet row). The network line ID
+  is `<tag>.<src_row>` (ADR-0002 D2), so it never changes when other rows are removed.
+- Source columns keep the source's header names, else `c1`, `c2`, .... Values are copied as
+  printed: no unit change, no relabel, no sign change, no dropped row.
+
+## Source metadata
+
+`molecules/<mol>/sources.tsv`, one row per source tag (ADR-0002 D3), tab-separated with a header:
+
+| column | content |
+|---|---|
+| `tag` | the source tag, as in line IDs |
+| `file` | data file(s) under `molecules/<mol>/`, `;`-separated; the paper PDF when the lines were OCR'd |
+| `kind` | `IR`, `Raman`, `term values` or `levels` (a calculated or fitted level list) |
+| `wn_min`, `wn_max` | range of the absolute line positions in cm-1 |
+| `stated_unc` | the position uncertainty the paper states, in cm-1; blank when the paper states none or it is not yet read |
+| `unc_basis` | where `stated_unc` comes from: the paper's words or table, short |
+| `notation` | the label scheme: axis convention, counter definition, anything a converter must know |
+| `notes` | row count, fidelity check, known defects |
+
+Network reads this file and does not read the paper again for the same facts.
 
 ### Diatomics with electronic transitions (e.g. SO bands crossing electronic states)
 ```

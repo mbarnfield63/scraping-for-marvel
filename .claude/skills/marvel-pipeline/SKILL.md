@@ -23,6 +23,33 @@ Self-hosted OCR on Hypatia, cloud as fallback: see `docs/adr/0013-self-hosted-oc
 8. **Reconcile units** (script, mechanical): `python3 scripts/csv_to_marvel.py reconcile <mol> <paperID>`
 9. **Format**: `python3 scripts/csv_to_marvel.py format <mol> <paperID>`
 
+Machine-readable sources (supplement line lists, an earlier compilation's input file) skip Steps
+2-9 and take the copy path below. For C2H4 from v2 and every new molecule, notation conversion
+belongs to MARVEL_network (`docs/adr/0002-conversion-boundary-and-orchestration.md`, D1).
+
+---
+
+### Copy path: machine-readable sources
+
+Use it when a source's measured lines already exist as a text, CSV or spreadsheet file.
+
+1. Copy the file from the raw data store into `papers/<folder>/` (Step 1 naming). The raw data
+   store is read-only. Never download a paper; report a missing one to VaultAgent and wait.
+2. Copy its data rows into `molecules/<mol>/copy/<tag>.tsv`, unchanged and in the source's own
+   notation. Column scheme: `format.md`, "Copied sources".
+3. Check fidelity only:
+   - the row count equals the data rows in the file, and the count the paper states, if it states one;
+   - every numeric cell parses;
+   - every row has every column.
+4. Add or update the source's row in `molecules/<mol>/sources.tsv` (`format.md`, "Source metadata").
+
+Never drop, relabel or merge a line, even one that looks wrong; network negates it with a reason.
+An earlier compilation's input file (for C2H4, Su's `input.txt`) is a source too: copy it
+unchanged and give each of its tags a `sources.tsv` row.
+
+C2H4 v1 is the exception: `scripts/c2h4_labels.py` and `molecules/C2H4/convert/` stay until
+MARVEL_network confirms that it has the converter.
+
 ---
 
 ### Fan-out (several papers or isotopologues at once)
