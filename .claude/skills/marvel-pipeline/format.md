@@ -36,9 +36,9 @@ transition_wavenumber   uncertainty   v1_upper   v2_upper   v3_upper   J_upper  
 transition_wavenumber   uncertainty   v1_upper ... v12_upper   J_upper   Ka_upper   Kc_upper   v1_lower ... v12_lower   J_lower   Ka_lower   Kc_lower   ID
 ```
 Mode numbering ν1..ν12 as in Herzberg and TheoReTS (ν7 ≈ 949, ν8 ≈ 943, ν10 ≈ 826, ν12 ≈ 1443
-cm-1). C2H4 v1 only: papers labelled in tensorial (J, C, n) / (J, C, α) went through
-`scripts/c2h4_labels.py` into `molecules/C2H4/convert/`. From v2 they take the copy path
-("Copied sources" below) and MARVEL_network converts them.
+cm-1). Papers labelled in tensorial (J, C, n) / (J, C, α) take the copy path ("Copied sources"
+below). MARVEL_network converts them (`MARVEL_network/molecules/C2H4/convert.py`, which reads
+`molecules/C2H4/csv/` for 13LeTab/c/d, 88ThCoDeCo, 18AsRa and 26HjSiCaSi: keep those files in place).
 
 ## Copied sources
 

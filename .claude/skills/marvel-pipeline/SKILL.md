@@ -47,8 +47,7 @@ Never drop, relabel or merge a line, even one that looks wrong; network negates 
 An earlier compilation's input file (for C2H4, Su's `input.txt`) is a source too: copy it
 unchanged and give each of its tags a `sources.tsv` row.
 
-C2H4 v1 is the exception: `scripts/c2h4_labels.py` and `molecules/C2H4/convert/` stay until
-MARVEL_network confirms that it has the converter.
+The C2H4 v1 converter moved to MARVEL_network (`molecules/C2H4/convert.py`).
 
 ---
 
