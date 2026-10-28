@@ -48,10 +48,20 @@ Machine-readable sources (SKILL.md, "Copy path") are copied, not extracted, to
 src_file   src_row   <source columns, unchanged>
 ```
 - `src_file`: the copied file's name in `papers/<folder>/`; for a spreadsheet, `<file>:<sheet>`.
-- `src_row`: the 1-based line number in that file (spreadsheet: the sheet row). The network line ID
-  is `<tag>.<src_row>` (ADR-0002 D2), so it never changes when other rows are removed.
+- `src_row`: the 1-based line number in that file (spreadsheet: the sheet row), per file. Scraping
+  never adds an offset.
 - Source columns keep the source's header names, else `c1`, `c2`, .... Values are copied as
   printed: no unit change, no relabel, no sign change, no dropped row.
+
+The network converter assigns the permanent line ID (ADR-0002 D2; MARVEL_network
+`molecules/<mol>/decisions.md`, D2 entry): `<tag>.<offset + row>`.
+- `row` counts lines across the tag's data files in a fixed reading order: line 1 of file 2 is
+  (line count of file 1) + 1. C2H4: 24BeBeReMa SM1_296K then SM2_130K; 26PeLeSuRu SupMat2 then
+  SupMat3.
+- `offset` is the largest index the earlier compilation's input file uses for that tag, else 0.
+  C2H4: 24PeLeSuRu has 30 in Su's `input.txt`, so SupMat1 line N is `24PeLeSuRu.(30+N)`.
+- A lookup-only file gives no IDs (C2H4: 24BeVaTuBo mmc3). The compilation's own rows keep its IDs.
+- No file letter in the tag: `ID_RE` stays as it is.
 
 ## Source metadata
 
