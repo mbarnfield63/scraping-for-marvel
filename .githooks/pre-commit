@@ -1,8 +1,18 @@
 #!/bin/sh
-# Compile check plus every self-test; any failure blocks the commit (bypass: git commit --no-verify).
+# Compile check plus every self-test, run on the staged index (not the working tree); any failure
+# blocks the commit (bypass: git commit --no-verify).
 # Enabled by: git config core.hooksPath .githooks
 set -e
-cd "$(git rev-parse --show-toplevel)"
+top="$(git rev-parse --show-toplevel)"
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+git checkout-index -a --prefix="$tmp/"
+# molecules/<mol>/ data is gitignored: link it in so the data-backed tests still run.
+for d in "$top"/molecules/*/; do
+    n="$(basename "$d")"
+    [ -e "$tmp/molecules/$n" ] || ln -s "$top/molecules/$n" "$tmp/molecules/$n"
+done
+cd "$tmp"
 python3 -m py_compile scripts/*.py hpc/ocr/ocr.py
 python3 scripts/unit_check.py --selftest
 python3 scripts/ocr_diff.py --selftest
