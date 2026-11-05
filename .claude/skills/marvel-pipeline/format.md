@@ -74,7 +74,7 @@ The network converter assigns the permanent line ID (ADR-0002 D2; MARVEL_network
 | `kind` | `IR`, `Raman`, `term values` or `levels` (a calculated or fitted level list) |
 | `wn_min`, `wn_max` | range of the absolute line positions in cm-1 |
 | `stated_unc` | the position uncertainty the paper states, in cm-1; blank when the paper states none or it is not yet read |
-| `unc_basis` | where `stated_unc` comes from: the paper's words or table, short |
+| `unc_basis` | where `stated_unc` comes from: the paper's words or table, short. Start with `per-line` or `overall`: one overall figure for every line is often too optimistic (Császár et al. 2026, §6.2) |
 | `notation` | the label scheme: axis convention, counter definition, anything a converter must know |
 | `notes` | row count, fidelity check, known defects |
 

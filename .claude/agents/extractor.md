@@ -31,7 +31,9 @@ These are the pipeline's extraction rules; this file is their only copy.
 
 **Anti-fabrication**: a wrong value silently corrupts the spectroscopic network — there is no downstream physical check. Never invent, interpolate, or "smooth" a value. An `UNREADABLE` flag is always correct over a guess. `scripts/templates/scraper_template.md` is the full extraction-brief skeleton.
 
-**Uncertainty**: comes **only** from what the paper explicitly states — a **global** measurement uncertainty/resolution quoted in the text (applied to every transition), or a **per-transition** uncertainty column in the tables (applied row by row). Never infer it, never split blended vs. clean with made-up values, never derive it from obs-calc/residuals. If the paper states no uncertainty at all, flag `REQUIRES MANUAL REVIEW` in `notes` — do not guess.
+**Uncertainty**: comes **only** from what the paper explicitly states — a **global** measurement uncertainty/resolution quoted in the text (applied to every transition), or a **per-transition** uncertainty column in the tables (applied row by row). Never infer it, never split blended vs. clean with made-up values, never derive it from obs-calc/residuals. If the paper states no uncertainty at all, flag `REQUIRES MANUAL REVIEW` in `notes` — do not guess. When the paper gives both, the per-transition value wins.
+
+**Line marks**: copy every per-line mark the paper prints (blended, overlapped, tentative or uncertain assignment, excluded from the fit, `*`, `?`) into `notes` with the paper's own meaning from its legend (`mark: * = blended, excluded from fit`). Never act on a mark yourself. Network uses these marks to judge a line's stated uncertainty (Császár et al. 2026, §6.2: a blended peak's position depends on how many hidden lines the fit assumed).
 
 **Parity (e/f)** (electronic-transition diatomics only — `ef_upper`/`ef_lower` columns): three cases, decided per row from what the paper states.
 - The paper states or labels which parity component was measured → record the real `e`/`f`.
