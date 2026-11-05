@@ -17,14 +17,23 @@ transition_wavenumber   uncertainty   v_upper   J_upper   v_lower   J_lower   ID
 transition_wavenumber   uncertainty   v1_upper   v2_upper   l2_upper   v3_upper   J_upper   v1_lower   v2_lower   l2_lower   v3_lower   J_lower   ID
 ```
 
-HCP adds rotationless parity after each `l2` (user decision 2026-10-21):
+### HCP: electronic state + `v1 v2 K ef v3 J` (NQN 7; user decisions 2026-10-21, HQ2 2026-11-05)
 ```
-transition_wavenumber   uncertainty   v1_upper   v2_upper   l2_upper   ef_upper   v3_upper   J_upper   v1_lower   v2_lower   l2_lower   ef_lower   v3_lower   J_lower   ID
+transition_wavenumber   uncertainty   es_upper   v1_upper   v2_upper   K_upper   ef_upper   v3_upper   J_upper   es_lower   v1_lower   v2_lower   K_lower   ef_lower   v3_lower   J_lower   ID
 ```
-`ef` comes from a printed label, else l=0 → e, else the dipole rule from the other side (P/R keep
-e/f, Q flips), logged in `notes`. Rows still blank with l>0 carry `REQUIRES MANUAL REVIEW: ef_<side>
-unresolved`, never `parity: unresolved` (`split-parity` would add a wrong second row). Bent-state
-rows (99IsNaMib, 96IsChOh C̃–X̃, 93MaLe) are formatted into `output/bent/`, apart from the linear network files.
+Ledger: MARVEL_network `molecules/HCP/decisions.md` (HQ2, HQ2c).
+- `es`: `X`, `A`, `B` or `C` (X̃, Ã, B̃, C̃). The ground level is `X 0 0 0 e 0 0`.
+- `K`, in the old `l2` slot: X̃ K = l; Ã and C̃ (bent) K = Ka; B̃ ¹Π K = |Λ+l|.
+- `v2`: the state's own numbering as printed (linear for X̃ and B̃, bent for Ã and C̃); never converted.
+- `ef`: from a printed label, else l=0 → e, else the dipole rule from the other side (P/R keep e/f, Q
+  flips), logged in `notes`. Ã and B̃ with K ≥ 1: + = e (RP), − = f (Q). Rows still blank with K>0
+  carry `REQUIRES MANUAL REVIEW: ef_<side> unresolved`, never `parity: unresolved` (`split-parity`
+  would add a wrong second row).
+- An unassigned upper level keeps `es` and `K` blank, like its `v` columns.
+
+Merged CSVs keep the extractor's `l2` columns with the state and Ka in `notes`;
+`scripts/hcp_nqn7.py` writes `output/` in this scheme. 93MaLe (hyperfine beats) has no F slot and
+stays out of `output/` (HQ2).
 
 ### Asymmetric tops (e.g. H₂O)
 ```
