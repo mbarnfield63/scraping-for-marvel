@@ -143,9 +143,11 @@ def split_parity(mol: str, paper_id: str) -> None:
         clean_notes = PARITY_UNRESOLVED_RE.sub("", r.get("notes", ""))
         clean_notes = re.sub(r";\s*;", ";", clean_notes).strip("; ").strip()
 
+        # Only blank sides are split: a side the paper labels keeps its e/f.
+        blank = [k for k in ("ef_upper", "ef_lower") if not r.get(k, "").strip()]
         new_row = dict(r)
-        new_row["ef_upper"] = "f"
-        new_row["ef_lower"] = "f"
+        for k in blank:
+            new_row[k] = "f"
         new_row["id"] = new_id
         sibling_note = f"parity-split: sibling of {r['id']}, degenerate e/f pair"
         new_row["notes"] = (
@@ -153,8 +155,8 @@ def split_parity(mol: str, paper_id: str) -> None:
         )
         new_rows.append(new_row)
 
-        r["ef_upper"] = "e"
-        r["ef_lower"] = "e"
+        for k in blank:
+            r[k] = "e"
         r["notes"] = PARITY_UNRESOLVED_RE.sub(
             f"parity: unresolved (split -> {new_id})", r.get("notes", "")
         )

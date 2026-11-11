@@ -57,4 +57,13 @@ assert lines[0].split("\t")[-1] == "id" and "notes" not in lines[0] and len(line
 out = run(c.count, "XY")
 assert "26AbCd" in out and "32S16O 3" in out and "= 4 rows" in out, out
 assert c.ID_RE.match("99IsNaMib.450") and c.ID_RE.match("26PeLeSuRu.12") and not c.ID_RE.match("99IsNaMiBcDe.1")
+# split-parity leaves a side the paper labels alone (one-sided unresolved parity)
+dz = c.BASE / "XZ" / "csv"
+dz.mkdir(parents=True)
+(dz / "26EfGh_batch1.csv").write_text(head + "1002.5,0.01,B2Pi,2,3.5,,f,X2Pi,2,2.5,,,26EfGh.1,15N18O,unit: cm-1; parity: unresolved\n")
+(dz / "26EfGh.done").touch()
+run(c.merge, "XZ", "26EfGh")
+run(c.split_parity, "XZ", "26EfGh")
+z = {r["id"]: r for r in csv.DictReader(open(dz / "26EfGh_merged.csv"))}
+assert (z["26EfGh.1"]["ef_upper"], z["26EfGh.1"]["ef_lower"], z["26EfGh.2"]["ef_upper"], z["26EfGh.2"]["ef_lower"]) == ("f", "e", "f", "f"), z
 print("ok")
