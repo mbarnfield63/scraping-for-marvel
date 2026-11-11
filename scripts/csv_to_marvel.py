@@ -40,7 +40,7 @@ NON_QN_COLS = ("transition_wavenumber", "uncertainty", "id", "iso", "notes")
 DUP_TOLERANCE = 0.002
 FREQ_TO_HZ = {"Hz": 1.0, "kHz": 1e3, "MHz": 1e6, "GHz": 1e9}
 UNIT_RE = re.compile(r"unit:\s*(Hz|kHz|MHz|GHz)")
-PARITY_UNRESOLVED_RE = re.compile(r"parity:\s*unresolved(?!\s*\(split)")
+PARITY_UNRESOLVED_RE = re.compile(r"parity:\s*unresolved(?!\s*\((?:split|filled))")
 PARITY_SIBLING_RE = re.compile(r"parity-split: sibling of (\S+?),")
 
 
@@ -132,9 +132,24 @@ def split_parity(mol: str, paper_id: str) -> None:
             key = (m.group(1), r.get("iso", ""))
             max_n[key] = max(max_n.get(key, 0), int(m.group(2)))
 
+    # Dipole rule: P/R lines (dJ = +-1) connect e-e and f-f, Q lines (dJ = 0) connect e-f.
+    # A side the paper labels always wins; only blank sides are filled.
+    flip = {"e": "f", "f": "e"}
     to_split = [r for r in rows if PARITY_UNRESOLVED_RE.search(r.get("notes", ""))]
     new_rows = []
     for r in to_split:
+        q = r.get("J_upper", "").strip() == r.get("J_lower", "").strip()
+        up, lo = r.get("ef_upper", "").strip(), r.get("ef_lower", "").strip()
+        if up or lo:  # one side printed: the other follows from the rule, no sibling row
+            if up and not lo:
+                r["ef_lower"] = flip[up] if q else up
+            elif lo and not up:
+                r["ef_upper"] = flip[lo] if q else lo
+            r["notes"] = PARITY_UNRESOLVED_RE.sub(
+                "parity: unresolved (filled by the dipole rule from the printed side)", r.get("notes", "")
+            )
+            continue
+
         m = ID_RE.match(r["id"])
         key = (m.group(1), r.get("iso", ""))
         max_n[key] += 1
@@ -143,11 +158,8 @@ def split_parity(mol: str, paper_id: str) -> None:
         clean_notes = PARITY_UNRESOLVED_RE.sub("", r.get("notes", ""))
         clean_notes = re.sub(r";\s*;", ";", clean_notes).strip("; ").strip()
 
-        # Only blank sides are split: a side the paper labels keeps its e/f.
-        blank = [k for k in ("ef_upper", "ef_lower") if not r.get(k, "").strip()]
         new_row = dict(r)
-        for k in blank:
-            new_row[k] = "f"
+        new_row["ef_upper"], new_row["ef_lower"] = ("f", "e") if q else ("f", "f")
         new_row["id"] = new_id
         sibling_note = f"parity-split: sibling of {r['id']}, degenerate e/f pair"
         new_row["notes"] = (
@@ -155,8 +167,7 @@ def split_parity(mol: str, paper_id: str) -> None:
         )
         new_rows.append(new_row)
 
-        for k in blank:
-            r[k] = "e"
+        r["ef_upper"], r["ef_lower"] = ("e", "f") if q else ("e", "e")
         r["notes"] = PARITY_UNRESOLVED_RE.sub(
             f"parity: unresolved (split -> {new_id})", r.get("notes", "")
         )

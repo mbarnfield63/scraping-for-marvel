@@ -57,13 +57,21 @@ assert lines[0].split("\t")[-1] == "id" and "notes" not in lines[0] and len(line
 out = run(c.count, "XY")
 assert "26AbCd" in out and "32S16O 3" in out and "= 4 rows" in out, out
 assert c.ID_RE.match("99IsNaMib.450") and c.ID_RE.match("26PeLeSuRu.12") and not c.ID_RE.match("99IsNaMiBcDe.1")
-# split-parity leaves a side the paper labels alone (one-sided unresolved parity)
+# split-parity follows the dipole rule: P/R pair e-e/f-f, Q pairs e-f/f-e, a printed side always wins
 dz = c.BASE / "XZ" / "csv"
 dz.mkdir(parents=True)
-(dz / "26EfGh_batch1.csv").write_text(head + "1002.5,0.01,B2Pi,2,3.5,,f,X2Pi,2,2.5,,,26EfGh.1,15N18O,unit: cm-1; parity: unresolved\n")
+(dz / "26EfGh_batch1.csv").write_text(head +
+    "1002.5,0.01,B2Pi,2,3.5,,f,X2Pi,2,2.5,,,26EfGh.1,15N18O,unit: cm-1; parity: unresolved\n"   # R, upper printed
+    "1003.5,0.01,B2Pi,2,2.5,,,X2Pi,2,2.5,,,26EfGh.2,15N18O,unit: cm-1; parity: unresolved\n"    # Q, both blank
+    "1004.5,0.01,B2Pi,2,2.5,,,X2Pi,2,2.5,,e,26EfGh.3,15N18O,unit: cm-1; parity: unresolved\n"   # Q, lower printed
+    "1005.5,0.01,B2Pi,2,1.5,,,X2Pi,2,2.5,,,26EfGh.4,15N18O,unit: cm-1; parity: unresolved\n")   # P, both blank
 (dz / "26EfGh.done").touch()
 run(c.merge, "XZ", "26EfGh")
 run(c.split_parity, "XZ", "26EfGh")
-z = {r["id"]: r for r in csv.DictReader(open(dz / "26EfGh_merged.csv"))}
-assert (z["26EfGh.1"]["ef_upper"], z["26EfGh.1"]["ef_lower"], z["26EfGh.2"]["ef_upper"], z["26EfGh.2"]["ef_lower"]) == ("f", "e", "f", "f"), z
+z = {r["id"]: (r["ef_upper"], r["ef_lower"]) for r in csv.DictReader(open(dz / "26EfGh_merged.csv"))}
+assert z == {"26EfGh.1": ("f", "f"), "26EfGh.2": ("e", "f"), "26EfGh.3": ("f", "e"), "26EfGh.4": ("e", "e"),
+             "26EfGh.5": ("f", "e"), "26EfGh.6": ("f", "f")}, z
+run(c.split_parity, "XZ", "26EfGh")  # idempotent
+assert len(list(csv.DictReader(open(dz / "26EfGh_merged.csv")))) == 6
+assert "FLAGGED" not in run(c.validate, "XZ", "26EfGh").split("Split-parity")[1].splitlines()[0]
 print("ok")
